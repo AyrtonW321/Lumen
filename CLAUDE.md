@@ -622,6 +622,16 @@ Gradient boosting vs logistic regression under identical validation. Neural netw
 - **Q5:** Not approved yet. Use synthetic data only until written approval.
 - **Q6:** Unknown. Ayrton will ask for an API key or list export.
 
+### Decisions (October 19, 2026)
+- **External app:** Lumen is a local web app (`lumen.py` + `index.html`). It tracks leads itself (SQLite) and syncs to Google Sheets when possible.
+- **Brands replace markets:** Haneco (Canada), JWL (Chicago), Exceledy (Texas, coming later).
+- **Products:** Solar, Lighting, BESS. Set per lead, multi-select.
+- **Lists:** each lead is either "new" (MyPhoner list) or "follow-up" (Ayrton's follow-up list).
+- **Outcome codes, expanded with a mapping** (supersedes 7.3): VM; RCP = GK; WP; EREQ (requested email) and BUSY (interested, busy) = INT; EMAILED (an action, not a call); NI; BKD; HAS = MyPhoner loser; BAD; DNC.
+- **Contacts:** several per lead, with name and job title. Voicemail streaks are tracked per contact.
+- **Advice:** rule-based next steps in `advice()` (find another contact, go through reception, prefers email, offer times).
+- **Model:** Ayrton wants to learn PyTorch. `model.py` uses PyTorch with `HIDDEN = 0` (logistic regression as a one-layer net), so scores stay explainable on small data. A hidden layer is one constant away. Training teaches from every call (features before the call predict whether it went well) plus Good/Poor labels (3× weight). Holdout is grouped by lead, and the sidebar reports whether the model beats the base rate.
+
 ---
 
 ## 10. Constraints and Rules for Claude Code

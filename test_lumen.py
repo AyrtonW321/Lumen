@@ -1,52 +1,97 @@
 """Self-check with synthetic data. Run: python test_lumen.py"""
-from datetime import date, datetime
+import random
+from datetime import date, datetime, timedelta
 
 import lumen
 
 conn = lumen.connect(":memory:")
-co = lumen.add_company(conn, "Acme Test Warehouse", "Ontario", "synthetic")
+t0 = datetime(2026, 10, 19, 9, 30)  # Monday
 
-# Monday 14:05 voicemail
-r = lumen.log_call(conn, co, "VM", now=datetime(2026, 10, 19, 14, 5), voicemail_left=True)
-assert r["attempt_number"] == 1
-assert r["myphoner_comment"] == "VM 14:05"
-c = conn.execute("SELECT * FROM companies WHERE id = ?", (co,)).fetchone()
-assert c["next_retry_date"] == "2026-10-21" and c["vm_streak"] == 1
-k = conn.execute("SELECT * FROM calls").fetchone()
-assert (k["weekday"], k["hour_block"], k["days_since_last_attempt"]) == ("Mon", "13-15", None)
+# Repeated voicemail on the same person -> poor lead, "find another contact"
+vm = lumen.add_lead(conn, "Test VM Warehouse", "Haneco", ["Lighting"], now=t0)
+bob = lumen.add_contact(conn, vm, "Bob Test", "Plant Manager", now=t0)
+for d in range(3):
+    lumen.log_activity(conn, vm, "VM", contact_id=bob, now=t0 + timedelta(days=d))
 
-# Friday retry skips weekend; days_since derived
-r = lumen.log_call(conn, co, "GK", now=datetime(2026, 10, 23, 9, 30), gatekeeper_gave_name=True)
-c = conn.execute("SELECT * FROM companies WHERE id = ?", (co,)).fetchone()
-assert r["attempt_number"] == 2 and c["next_retry_date"] == "2026-10-26" and c["vm_streak"] == 0
-assert conn.execute("SELECT days_since_last_attempt FROM calls WHERE id = 2").fetchone()[0] == 4
+# Open but busy -> good lead, top of the list
+busy = lumen.add_lead(conn, "Test Busy Plant", "JWL", ["Solar", "BESS"], source="follow-up", now=t0)
+amy = lumen.add_contact(conn, busy, "Amy Test", "Facilities Director", now=t0)
+r = lumen.log_activity(conn, busy, "BUSY", contact_id=amy, callback_date="2026-10-22", note="busy till Thu",
+                       now=t0 + timedelta(hours=5))
+assert r["myphoner_comment"] == "BUSY 14:30 - Amy Test (Facilities Director) - call back 2026-10-22 - busy till Thu"
 
-# INT with callback date uses it; relevant contact marks decision-maker
-lumen.log_call(conn, co, "INT", now=datetime(2026, 10, 26, 10, 0), role_reached="owner",
-               contact_name="J. Test", callback_date="2026-11-02")
-c = conn.execute("SELECT * FROM companies WHERE id = ?", (co,)).fetchone()
-assert c["next_retry_date"] == "2026-11-02" and c["decision_maker_identified"] == 1
-assert conn.execute("SELECT myphoner_comment FROM calls WHERE id = 3").fetchone()[0] == \
-    "INT 10:00 - J. Test - owner - call back 2026-11-02"
+# Receptionist only, no decision-maker known
+rcp = lumen.add_lead(conn, "Test Reception Co", "Exceledy", now=t0)
+lumen.log_activity(conn, rcp, "RCP", now=t0)
 
-# VM streak: flag at 4, stop at 6
-co2 = lumen.add_company(conn, "Beta Test Plant", "Chicago")
-for day in range(1, 7):
-    lumen.log_call(conn, co2, "VM", now=datetime(2026, 11, day + 1, 11, 0))
-rows = {r["id"]: r for r in lumen.list_companies(conn, today=date(2026, 12, 1))}
-assert rows[co2]["needs_new_contact"] and rows[co2]["next_retry_date"] is None and not rows[co2]["due"]
-assert rows[co]["due"]
+# Email request marks preference
+em = lumen.add_lead(conn, "Test Email Co", "Haneco", now=t0)
+sue = lumen.add_contact(conn, em, "Sue Test", "Operations Manager", now=t0)
+lumen.log_activity(conn, em, "EREQ", contact_id=sue, now=t0)
 
-# DNC is never due
-lumen.log_call(conn, co, "DNC", now=datetime(2026, 11, 3, 9, 0))
-assert not {r["id"]: r for r in lumen.list_companies(conn, today=date(2027, 1, 1))}[co]["due"]
+booked = lumen.add_lead(conn, "Test Booked Co", "Haneco", now=t0)
+lumen.log_activity(conn, booked, "BKD", now=t0)
+
+rows = {r["id"]: r for r in lumen.list_leads(conn, today=date(2026, 10, 23))}
+assert any("Find another contact: Bob Test" in a for a in rows[vm]["advice"]), rows[vm]["advice"]
+assert rows[busy]["advice"][0].startswith("Open to a meeting") and rows[busy]["tier"] == 1
+assert rows[busy]["next_action_date"] == "2026-10-22" and rows[busy]["due"]
+assert any("Contact receptionist first" in a for a in rows[rcp]["advice"])
+dm_lead = lumen.add_lead(conn, "Test DM Known Co", "Haneco", now=t0)
+lumen.add_contact(conn, dm_lead, "Dan Test", "Owner", now=t0)
+lumen.log_activity(conn, dm_lead, "RCP", now=t0)
+dm_advice = next(r["advice"] for r in lumen.list_leads(conn) if r["id"] == dm_lead)
+assert any("ask for Dan Test" in a for a in dm_advice), dm_advice
+assert "Sue Test prefers email" in rows[em]["advice"] and rows[em]["advice"][0] == "Send the email they asked for"
+assert rows[booked]["closed"] == "BKD" and not rows[booked]["due"]
+assert rows[busy]["tier"] < rows[vm]["tier"]
 
 # Validation
-for bad in [dict(outcome="CB"), dict(outcome="VM", role_reached="ceo"), dict(outcome="NI", objection="meh")]:
+for bad in [dict(lead_id=vm, outcome="CB"), dict(lead_id=vm, outcome="VM", contact_id=amy)]:
     try:
-        lumen.log_call(conn, co, **bad)
+        lumen.log_activity(conn, **bad)
+        raise AssertionError(f"accepted {bad}")
+    except ValueError:
+        pass
+for bad in [dict(brand="Nope"), dict(products=["Wind"]), dict(label="great")]:
+    try:
+        lumen.update_lead(conn, vm, **bad)
         raise AssertionError(f"accepted {bad}")
     except ValueError:
         pass
 
-print("ok")
+# Training: features never see the call they predict
+lead = lumen.load_all(conn)[busy]
+X, y, w, ids = lumen.training_examples({busy: lead})
+assert y == [1.0] and X[0]["positive_signals"] == 0 and X[0]["never_contacted"] == 1
+
+try:
+    import model
+except ImportError:
+    print("ok (torch not installed, model test skipped)")
+    raise SystemExit
+
+# Synthetic world: decision-makers who get reached say yes; voicemail streaks don't
+random.seed(1)
+for i in range(60):
+    lid = lumen.add_lead(conn, f"Synth {i}", random.choice(list(lumen.BRANDS)), now=t0)
+    good = i % 2 == 0
+    cid = lumen.add_contact(conn, lid, f"Person {i}", "Facilities Manager" if good else "Clerk", now=t0)
+    for d in range(4):
+        outcome = random.choice(["BUSY", "EREQ", "RCP"]) if good else "VM"
+        lumen.log_activity(conn, lid, outcome, contact_id=cid, now=t0 + timedelta(days=d, hours=1))
+lumen.update_lead(conn, vm, label="poor")
+
+scorer = model.Scorer.train(*lumen.training_examples(lumen.load_all(conn)))
+assert scorer.metrics["beats_baseline"], scorer.metrics
+rows = {r["id"]: r for r in lumen.list_leads(conn, scorer, today=date(2026, 10, 23))}
+assert rows[busy]["score"] > rows[vm]["score"], (rows[busy]["score"], rows[vm]["score"])
+assert rows[vm]["why"], "logistic model should explain its score"
+assert "score" not in rows[booked]
+
+import tempfile
+from pathlib import Path
+path = Path(tempfile.mkdtemp()) / "m.pt"
+scorer.save(path)
+assert model.Scorer.load(path).predict([lumen.features(lumen.load_all(conn)[vm], [], [], t0)])
+print("ok", scorer.metrics)

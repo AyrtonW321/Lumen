@@ -5,197 +5,269 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lumen</title>
 <style>
-  :root { --bg:#f6f6f4; --panel:#fff; --ink:#1d1d1b; --mute:#6b6b66; --line:#e2e2dc; --accent:#b8860b; --due:#2f7d4f; --warn:#b3412e; }
-  * { box-sizing: border-box; }
-  body { margin:0; font:14px/1.4 system-ui, sans-serif; background:var(--bg); color:var(--ink); display:grid; grid-template-columns:320px 1fr; height:100vh; }
+  :root { --bg:#f6f6f4; --panel:#fff; --ink:#1d1d1b; --mute:#6b6b66; --line:#e2e2dc; --accent:#b8860b; --good:#2f7d4f; --warn:#b3412e; --soft:#f1ede2; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.4 system-ui, sans-serif; background:var(--bg); color:var(--ink); display:grid; grid-template-columns:360px 1fr; height:100vh; }
   aside, main { padding:16px; overflow:auto; }
   aside { border-right:1px solid var(--line); background:var(--panel); }
-  input, select, button { font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; }
+  input, select, button, textarea { font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--ink); }
   button { cursor:pointer; }
-  #search { width:100%; margin-bottom:8px; }
-  .co { padding:8px; border-radius:6px; cursor:pointer; display:flex; justify-content:space-between; gap:8px; }
-  .co:hover, .co.sel { background:#f1ede2; }
+  button.on { background:var(--ink); color:#fff; }
+  #search { width:100%; }
+  .filters { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin:8px 0; }
+  .row { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .lead { padding:8px; border-radius:6px; cursor:pointer; display:grid; grid-template-columns:1fr auto; gap:2px 8px; }
+  .lead:hover, .lead.sel { background:var(--soft); }
+  .lead small { color:var(--mute); grid-column:1 / -1; }
   .tag { font-size:11px; padding:1px 6px; border-radius:10px; border:1px solid var(--line); color:var(--mute); white-space:nowrap; }
-  .tag.due { color:var(--due); border-color:var(--due); }
+  .tag.good { color:var(--good); border-color:var(--good); }
   .tag.warn { color:var(--warn); border-color:var(--warn); }
+  .score { font-weight:600; font-variant-numeric:tabular-nums; }
   details { margin-top:12px; }
   details form { display:grid; gap:6px; margin-top:8px; }
   h2 { margin:0 0 4px; font-size:20px; }
-  .meta { color:var(--mute); margin-bottom:16px; }
-  .keys { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 14px; }
-  .key { border:1px solid var(--line); border-radius:6px; padding:6px 10px; background:#fff; }
+  h3 { margin:18px 0 6px; font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--mute); }
+  .meta { color:var(--mute); }
+  .card { background:#fff; border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  .advice li { margin:2px 0; }
+  .keys { display:flex; flex-wrap:wrap; gap:6px; }
+  .key { border:1px solid var(--line); border-radius:6px; padding:6px 10px; background:#fff; cursor:pointer; }
   .key b { color:var(--accent); margin-right:4px; }
   .key.on { background:var(--ink); color:#fff; }
   .key.on b { color:#ffd76a; }
-  .label { font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--mute); }
-  .fields { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:8px; margin-bottom:12px; }
-  .fields label { display:grid; gap:2px; font-size:12px; color:var(--mute); }
-  #preview { font-family:ui-monospace, monospace; background:#fff; border:1px dashed var(--line); padding:8px; border-radius:6px; min-height:34px; }
-  table { border-collapse:collapse; width:100%; margin-top:16px; background:#fff; }
-  td, th { border-bottom:1px solid var(--line); padding:6px; text-align:left; font-size:13px; }
-  #toast { position:fixed; bottom:16px; right:16px; background:var(--ink); color:#fff; padding:10px 14px; border-radius:8px; opacity:0; transition:opacity .2s; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:8px; }
+  label.f { display:grid; gap:2px; font-size:12px; color:var(--mute); }
+  textarea { width:100%; min-height:60px; resize:vertical; }
+  #preview { font-family:ui-monospace, monospace; background:#fff; border:1px dashed var(--line); padding:8px; border-radius:6px; min-height:34px; margin-top:8px; }
+  table { border-collapse:collapse; width:100%; background:#fff; }
+  td, th { border-bottom:1px solid var(--line); padding:6px; text-align:left; font-size:13px; vertical-align:top; }
+  #toast { position:fixed; bottom:16px; right:16px; max-width:480px; background:var(--ink); color:#fff; padding:10px 14px; border-radius:8px; opacity:0; transition:opacity .2s; pointer-events:none; }
   #toast.show { opacity:1; }
   .hint { color:var(--mute); font-size:12px; }
   .empty { color:var(--mute); margin-top:40px; }
-  @media (max-width: 700px) { body { grid-template-columns:1fr; height:auto; } }
+  @media (max-width:760px) { body { grid-template-columns:1fr; height:auto; } }
 </style>
 </head>
 <body>
 <aside>
-  <input id="search" placeholder="Search companies  ( / )" autocomplete="off">
+  <input id="search" placeholder="Search leads  ( / )" autocomplete="off">
+  <div class="filters">
+    <select id="fBrand"><option value="">All brands</option></select>
+    <select id="fProduct"><option value="">All products</option></select>
+    <select id="fSource"><option value="">All lists</option></select>
+  </div>
+  <div class="row hint"><label><input type="checkbox" id="fDue" checked> Due now</label><label><input type="checkbox" id="fClosed"> Show closed</label><span id="sortNote"></span></div>
   <div id="list"></div>
-  <details id="newbox">
-    <summary>New company</summary>
-    <form id="newco">
+  <details>
+    <summary>New lead</summary>
+    <form id="newLead">
       <input name="name" placeholder="Company name" required>
-      <select name="market" id="market"></select>
+      <select name="brand" id="nBrand"></select>
+      <div class="row" id="nProducts"></div>
+      <select name="source" id="nSource"></select>
       <input name="list_name" placeholder="MyPhoner list (optional)">
-      <button>Add</button>
+      <input name="phone" placeholder="Main phone (optional)">
+      <button>Add lead</button>
     </form>
   </details>
-  <p><button id="sync">Sync to Google Sheets</button></p>
+  <h3>AI</h3>
+  <div class="row"><button id="train">Train AI</button><button id="sync">Sync to Sheets</button></div>
+  <p class="hint" id="modelInfo"></p>
   <p class="hint">Caller: <input id="caller" size="10" placeholder="your name"></p>
 </aside>
+
 <main>
-  <div id="empty" class="empty">Pick a company on the left. Keys: <b>/</b> search, <b>↑↓</b> move, outcome letter, digits for role/objection, <b>Enter</b> save, <b>Esc</b> reset.</div>
+  <div id="empty" class="empty">Pick a lead. Keys: <b>/</b> search · <b>↑↓</b> move · outcome letter · <b>1-9</b> pick contact · <b>Enter</b> save · <b>Esc</b> reset.</div>
   <section id="panel" hidden>
-    <h2 id="coname"></h2>
-    <div class="meta" id="cometa"></div>
-
-    <div class="label">Outcome</div><div class="keys" id="outcomes"></div>
-    <div class="label">Role reached (digit, 0 skip)</div><div class="keys" id="roles"></div>
-    <div class="label">Objection (digit, NI only)</div><div class="keys" id="objections"></div>
-
-    <div class="fields">
-      <label>Contact name<input id="contact_name"></label>
-      <label>Callback date<input id="callback_date" type="date"></label>
-      <label>Note (business only)<input id="note"></label>
-      <label><span><input id="voicemail_left" type="checkbox"> Voicemail left</span></label>
-      <label><span><input id="gatekeeper_gave_name" type="checkbox"> Gatekeeper gave name/line</span></label>
+    <div class="row" style="justify-content:space-between">
+      <div><h2 id="lName"></h2><div class="meta" id="lMeta"></div></div>
+      <div class="row">
+        <span class="hint">Teach the AI:</span>
+        <button id="good">Good lead</button><button id="poor">Poor lead</button>
+      </div>
     </div>
-    <div class="label">MyPhoner comment (copied on save)</div>
-    <div id="preview"></div>
-    <p><button id="save">Save (Enter)</button></p>
 
-    <table><thead><tr><th>When</th><th>#</th><th>Outcome</th><th>Role</th><th>Comment</th></tr></thead><tbody id="history"></tbody></table>
+    <div class="row" style="margin-top:8px">
+      <select id="lBrand"></select>
+      <span id="lProducts" class="row"></span>
+      <select id="lSource"></select>
+    </div>
+
+    <h3>Advice</h3>
+    <div class="card"><div id="lScore"></div><ul class="advice" id="lAdvice"></ul></div>
+
+    <h3>Contacts (1-9 to pick who you called)</h3>
+    <div id="contacts" class="keys"></div>
+    <details><summary>Add contact</summary>
+      <form id="newContact" class="grid">
+        <input name="name" placeholder="Name" required>
+        <input name="title" placeholder="Job title">
+        <input name="phone" placeholder="Direct line">
+        <input name="email" placeholder="Email">
+        <button>Add contact</button>
+      </form>
+    </details>
+
+    <h3>Log activity</h3>
+    <div class="keys" id="outcomes"></div>
+    <div class="grid" style="margin-top:8px">
+      <label class="f">Callback date<input id="callback_date" type="date"></label>
+    </div>
+    <label class="f" style="margin-top:8px">Call log (what happened)<textarea id="note" placeholder="e.g. Reception said manager in Thursdays, prefers email"></textarea></label>
+    <div id="preview"></div>
+    <p><button id="save">Save (Enter, or Ctrl+Enter in notes)</button></p>
+
+    <h3>History</h3>
+    <table><thead><tr><th>When</th><th>Outcome</th><th>Contact</th><th>Log</th></tr></thead><tbody id="history"></tbody></table>
   </section>
 </main>
 <div id="toast"></div>
 
 <script>
 const $ = id => document.getElementById(id);
-const OUTCOME_KEYS = { v:"VM", x:"BAD", g:"GK", w:"WP", n:"NI", i:"INT", b:"BKD", d:"DNC" };
-let cfg, companies = [], view = [], sel = null, form;
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+let cfg, leads = [], view = [], sel = null, detail = null, form = {};
 
 const api = (path, body) => fetch(path, body ? { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) } : {})
   .then(async r => { const j = await r.json(); if (!r.ok) throw new Error(j.error); return j; });
 
-function toast(msg) { $("toast").textContent = msg; $("toast").classList.add("show"); setTimeout(() => $("toast").classList.remove("show"), 2500); }
+function toast(msg) { $("toast").textContent = msg; $("toast").classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => $("toast").classList.remove("show"), 3000); }
+const options = (el, entries, first) => el.innerHTML = (first ? `<option value="">${first}</option>` : "") + entries.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join("");
 
 function resetForm() {
-  form = { outcome:null, role_reached:null, objection:null, step:"outcome" };
-  for (const id of ["contact_name", "callback_date", "note"]) $(id).value = "";
-  for (const id of ["voicemail_left", "gatekeeper_gave_name"]) $(id).checked = false;
-  if (sel) $("voicemail_left").checked = sel.leave_voicemail_next;
-  render();
+  form = { outcome:null, contact_id: detail?.contacts.at(-1)?.id ?? null };
+  $("callback_date").value = ""; $("note").value = "";
+  renderPanel();
 }
 
-function keyRow(el, items, active) {
-  el.innerHTML = items.map(([k, label, val]) => `<span class="key ${val === active ? "on" : ""}"><b>${k}</b>${label}</span>`).join("");
+function sortKey(a, b) {
+  if (a.score != null || b.score != null) return (b.score ?? -1) - (a.score ?? -1);
+  return a.tier - b.tier || (a.next_action_date || "").localeCompare(b.next_action_date || "") || a.name.localeCompare(b.name);
+}
+
+function renderList() {
+  const q = $("search").value.toLowerCase(), fb = $("fBrand").value, fp = $("fProduct").value, fs = $("fSource").value;
+  view = leads.filter(l => l.name.toLowerCase().includes(q) && (!fb || l.brand === fb) && (!fp || l.products.split(",").includes(fp))
+    && (!fs || l.source === fs) && ($("fClosed").checked || !l.closed) && (!$("fDue").checked || l.due || l.closed)).sort(sortKey);
+  $("sortNote").textContent = leads.some(l => l.score != null) ? "· sorted by AI score" : "· sorted by advice (train AI to rank)";
+  $("list").innerHTML = view.map(l => `<div class="lead ${sel === l.id ? "sel" : ""}" data-id="${l.id}">
+    <span>${esc(l.name)}</span>
+    <span class="score">${l.closed ? '<span class="tag">' + l.closed + "</span>" : l.score != null ? Math.round(l.score * 100) + "%" : ""}</span>
+    <small>${l.brand} · ${l.source === "follow-up" ? "follow-up" : "new"}${l.products ? " · " + l.products.replaceAll(",", ", ") : ""}
+      · ${l.last_outcome || "not called"}${l.label ? ` · <span class="tag ${l.label === "good" ? "good" : "warn"}">${l.label}</span>` : ""}
+      ${l.advice[0] ? "<br>" + esc(l.advice[0]) : ""}</small></div>`).join("") || '<p class="hint">No leads match.</p>';
+}
+
+function renderPanel() {
+  $("empty").hidden = !!detail; $("panel").hidden = !detail;
+  if (!detail) return;
+  const row = leads.find(l => l.id === detail.id) || {};
+  $("lName").textContent = detail.name;
+  $("lMeta").textContent = `${cfg.brands[detail.brand]} · ${detail.activities.length} touches · next action ${detail.next_action_date || "—"}${detail.phone ? " · " + detail.phone : ""}${detail.list_name ? " · list " + detail.list_name : ""}`;
+  $("lBrand").value = detail.brand; $("lSource").value = detail.source;
+  const prods = detail.products.split(",");
+  $("lProducts").innerHTML = cfg.products.map(p => `<button data-p="${p}" class="${prods.includes(p) ? "on" : ""}">${p}</button>`).join("");
+  $("good").classList.toggle("on", detail.label === "good"); $("poor").classList.toggle("on", detail.label === "poor");
+  $("lScore").innerHTML = row.score != null ? `<b>AI score ${Math.round(row.score * 100)}%</b> <span class="hint">chance next touch goes well${row.why?.length ? " · " + row.why.map(esc).join(", ") : ""}</span>` : "";
+  $("lAdvice").innerHTML = (row.advice || []).map(a => `<li>${esc(a)}</li>`).join("") || "<li>No advice yet</li>";
+  $("contacts").innerHTML = detail.contacts.map((c, i) => `<span class="key ${form.contact_id === c.id ? "on" : ""}" data-c="${c.id}"><b>${i + 1}</b>${esc(c.name)}${c.title ? " · " + esc(c.title) : ""}${c.prefers_email ? " ✉" : ""}</span>`).join("")
+    + `<span class="key ${form.contact_id == null ? "on" : ""}" data-c=""><b>0</b>no contact / main line</span>`;
+  $("outcomes").innerHTML = Object.entries(cfg.outcomes).map(([code, o]) => `<span class="key ${form.outcome === code ? "on" : ""}" data-o="${code}"><b>${o.key.toUpperCase()}</b>${o.label}</span>`).join("");
+  $("preview").textContent = preview();
+  const names = Object.fromEntries(detail.contacts.map(c => [c.id, c.name]));
+  $("history").innerHTML = detail.activities.map(a => `<tr><td>${a.timestamp.replace("T", " ").slice(0, 16)}</td><td>${a.outcome}</td><td>${esc(names[a.contact_id] || "")}</td><td>${esc(a.note || "")}</td></tr>`).join("");
 }
 
 function preview() {
   if (!form.outcome) return "";
-  const t = new Date().toTimeString().slice(0, 5);
-  const cb = $("callback_date").value;
-  return [`${form.outcome} ${t}`, $("contact_name").value, form.role_reached, form.objection, cb && `call back ${cb}`, $("note").value]
-    .filter(Boolean).join(" - ");
+  const c = detail.contacts.find(c => c.id === form.contact_id);
+  const who = c && (c.title ? `${c.name} (${c.title})` : c.name), cb = $("callback_date").value;
+  return [`${form.outcome} ${new Date().toTimeString().slice(0, 5)}`, who, cb && `call back ${cb}`, $("note").value].filter(Boolean).join(" - ");
 }
 
-function render() {
-  const q = $("search").value.toLowerCase();
-  view = companies.filter(c => c.name.toLowerCase().includes(q))
-    .sort((a, b) => (b.due - a.due) || (a.next_retry_date || "9").localeCompare(b.next_retry_date || "9") || a.name.localeCompare(b.name));
-  $("list").innerHTML = view.map(c => `<div class="co ${sel && c.id === sel.id ? "sel" : ""}" data-id="${c.id}">
-    <span>${esc(c.name)}</span><span>
-    ${c.dnc ? '<span class="tag warn">DNC</span>' : ""}
-    ${c.needs_new_contact ? '<span class="tag warn">new contact</span>' : ""}
-    ${c.due ? '<span class="tag due">due</span>' : ""}
-    <span class="tag">${c.last_outcome || "new"}</span></span></div>`).join("");
+async function refresh() { leads = await api("/api/leads"); renderList(); renderPanel(); }
 
-  $("empty").hidden = !!sel; $("panel").hidden = !sel;
-  if (!sel) return;
-  $("coname").textContent = sel.name;
-  $("cometa").textContent = `${sel.market}${sel.list_name ? " · " + sel.list_name : ""} · ${sel.attempts} attempts · last ${sel.last_outcome || "—"} · next retry ${sel.next_retry_date || "—"}`
-    + (sel.leave_voicemail_next ? " · leave voicemail this attempt" : "")
-    + (sel.needs_new_contact ? " · 4+ voicemails: find a new number or contact" : "")
-    + (sel.dnc ? " · DO NOT CALL" : "");
-  keyRow($("outcomes"), Object.entries(OUTCOME_KEYS).map(([k, v]) => [k.toUpperCase(), cfg.outcomes[v], v]), form.outcome);
-  keyRow($("roles"), cfg.roles.map((r, i) => [i + 1, r, r]), form.role_reached);
-  keyRow($("objections"), cfg.objections.map((o, i) => [i + 1, o, o]), form.objection);
-  $("preview").textContent = preview();
+async function select(id) {
+  sel = id; detail = await api(`/api/leads/${id}`); resetForm(); renderList();
 }
 
-const esc = s => s.replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
-
-async function refresh() {
-  companies = await api("/api/companies");
-  if (sel) sel = companies.find(c => c.id === sel.id);
-  render();
-}
-
-async function select(c) {
-  sel = c; resetForm();
-  const calls = await api(`/api/companies/${c.id}/calls`);
-  $("history").innerHTML = calls.map(k => `<tr><td>${k.timestamp.replace("T", " ")}</td><td>${k.attempt_number}</td><td>${k.outcome}</td><td>${k.role_reached || ""}</td><td>${esc(k.myphoner_comment)}</td></tr>`).join("");
+async function patch(fields) {
+  try { await api(`/api/leads/${detail.id}`, fields); detail = await api(`/api/leads/${detail.id}`); await refresh(); }
+  catch (e) { toast(e.message); }
 }
 
 async function save() {
-  if (!sel || !form.outcome) return toast("Pick an outcome first");
-  const body = { company_id: sel.id, outcome: form.outcome, role_reached: form.role_reached, objection: form.objection,
-    contact_name: $("contact_name").value || null, callback_date: $("callback_date").value || null, note: $("note").value || null,
-    voicemail_left: $("voicemail_left").checked, gatekeeper_gave_name: $("gatekeeper_gave_name").checked, caller: $("caller").value || null };
+  if (!detail || !form.outcome) return toast("Pick an outcome first");
   try {
-    const r = await api("/api/calls", body);
-    try { await navigator.clipboard.writeText(r.myphoner_comment); toast(`Saved · copied: ${r.myphoner_comment}`); }
-    catch { toast(`Saved (copy failed): ${r.myphoner_comment}`); }
-    await refresh(); await select(sel);
+    const r = await api("/api/activities", { lead_id: detail.id, outcome: form.outcome, contact_id: form.contact_id,
+      callback_date: $("callback_date").value || null, note: $("note").value || null, caller: $("caller").value || null });
+    try { await navigator.clipboard.writeText(r.myphoner_comment); toast(`Saved · copied for MyPhoner: ${r.myphoner_comment}`); }
+    catch { toast(`Saved · MyPhoner comment: ${r.myphoner_comment}`); }
+    await refresh(); await select(detail.id);
   } catch (e) { toast(e.message); }
 }
 
+function showModel(m) {
+  $("modelInfo").textContent = !m ? "Not trained yet. Log calls or label leads, then Train AI."
+    : `Trained on ${m.examples} examples.` + (m.val_examples ? ` Held-out check: ${m.beats_baseline ? "beats" : "does NOT beat"} guessing the average (Brier ${m.val_brier_model} vs ${m.val_brier_baseline}).` : " Too few leads for a held-out check.");
+}
+
 document.addEventListener("keydown", e => {
-  const typing = ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName);
-  if (e.key === "Escape") { document.activeElement.blur(); resetForm(); return; }
-  if (e.key === "Enter" && sel && document.activeElement.closest("#newco") === null) { e.preventDefault(); save(); return; }
+  const el = document.activeElement, typing = ["INPUT", "SELECT", "TEXTAREA"].includes(el.tagName);
+  if (e.key === "Escape") { el.blur(); resetForm(); return; }
+  if (e.key === "Enter" && detail && !el.closest("form") && el.id !== "search" && (!typing || el.tagName !== "TEXTAREA" || e.ctrlKey)) { e.preventDefault(); save(); return; }
   if (typing) return;
   if (e.key === "/") { e.preventDefault(); $("search").focus(); return; }
   if (e.key === "ArrowDown" || e.key === "ArrowUp") {
     e.preventDefault();
-    const i = view.findIndex(c => sel && c.id === sel.id), j = Math.max(0, Math.min(view.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)));
-    if (view[j]) select(view[j]);
+    const i = view.findIndex(l => l.id === sel), j = Math.max(0, Math.min(view.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)));
+    if (view[j]) select(view[j].id);
     return;
   }
-  if (!sel) return;
-  const k = e.key.toLowerCase();
-  if (OUTCOME_KEYS[k]) { form.outcome = OUTCOME_KEYS[k]; form.role_reached = form.objection = null; form.step = "role"; }
-  else if (/^\d$/.test(k) && form.step === "role") {
-    form.role_reached = k === "0" ? null : cfg.roles[+k - 1] || null;
-    form.step = form.outcome === "NI" ? "objection" : "done";
-  }
-  else if (/^\d$/.test(k) && form.step === "objection") { form.objection = k === "0" ? null : cfg.objections[+k - 1] || null; form.step = "done"; }
-  render();
+  if (!detail) return;
+  const code = Object.keys(cfg.outcomes).find(c => cfg.outcomes[c].key === e.key.toLowerCase());
+  if (code) form.outcome = code;
+  else if (e.key === "0") form.contact_id = null;
+  else if (/^[1-9]$/.test(e.key) && detail.contacts[+e.key - 1]) form.contact_id = detail.contacts[+e.key - 1].id;
+  else return;
+  renderPanel();
 });
 
-$("search").addEventListener("input", render);
-$("search").addEventListener("keydown", e => { if (e.key === "Enter" && view[0]) { e.preventDefault(); e.stopPropagation(); select(view[0]); $("search").blur(); } });
-$("list").addEventListener("click", e => { const el = e.target.closest(".co"); if (el) select(companies.find(c => c.id === +el.dataset.id)); });
-for (const id of ["contact_name", "callback_date", "note"]) $(id).addEventListener("input", () => { $("preview").textContent = preview(); });
+for (const id of ["search", "fBrand", "fProduct", "fSource", "fDue", "fClosed"]) $(id).addEventListener("input", renderList);
+$("search").addEventListener("keydown", e => { if (e.key === "Enter" && view[0]) { e.preventDefault(); select(view[0].id); $("search").blur(); } });
+$("list").addEventListener("click", e => { const el = e.target.closest(".lead"); if (el) select(+el.dataset.id); });
+$("outcomes").addEventListener("click", e => { const el = e.target.closest("[data-o]"); if (el) { form.outcome = el.dataset.o; renderPanel(); } });
+$("contacts").addEventListener("click", e => { const el = e.target.closest("[data-c]"); if (el) { form.contact_id = el.dataset.c ? +el.dataset.c : null; renderPanel(); } });
+$("lProducts").addEventListener("click", e => {
+  const p = e.target.dataset.p; if (!p) return;
+  const set = new Set(detail.products.split(",").filter(Boolean)); set.has(p) ? set.delete(p) : set.add(p);
+  patch({ products: [...set] });
+});
+$("lBrand").addEventListener("change", e => patch({ brand: e.target.value }));
+$("lSource").addEventListener("change", e => patch({ source: e.target.value }));
+$("good").addEventListener("click", () => patch({ label: detail.label === "good" ? null : "good" }));
+$("poor").addEventListener("click", () => patch({ label: detail.label === "poor" ? null : "poor" }));
+for (const id of ["callback_date", "note"]) $(id).addEventListener("input", () => { $("preview").textContent = preview(); });
 $("save").addEventListener("click", save);
-$("newco").addEventListener("submit", async e => {
+
+$("newLead").addEventListener("submit", async e => {
   e.preventDefault();
   const f = Object.fromEntries(new FormData(e.target));
-  try { const { id } = await api("/api/companies", f); e.target.reset(); await refresh(); select(companies.find(c => c.id === id)); }
+  f.products = [...e.target.querySelectorAll("input[name=product]:checked")].map(i => i.value); delete f.product;
+  try { const { id } = await api("/api/leads", f); e.target.reset(); await refresh(); select(id); }
   catch (err) { toast(err.message); }
+});
+$("newContact").addEventListener("submit", async e => {
+  e.preventDefault();
+  try { const { id } = await api(`/api/leads/${detail.id}/contacts`, Object.fromEntries(new FormData(e.target))); e.target.reset();
+    detail = await api(`/api/leads/${detail.id}`); form.contact_id = id; await refresh(); }
+  catch (err) { toast(err.message); }
+});
+$("train").addEventListener("click", async () => {
+  $("train").disabled = true;
+  try { const m = await api("/api/train", {}); showModel(m); toast("AI trained"); await refresh(); }
+  catch (e) { toast("Training failed: " + e.message); }
+  $("train").disabled = false;
 });
 $("sync").addEventListener("click", async () => {
   $("sync").disabled = true;
@@ -208,8 +280,13 @@ $("caller").addEventListener("change", () => { try { localStorage.setItem("lumen
 
 (async () => {
   cfg = await api("/api/config");
-  $("market").innerHTML = cfg.markets.map(m => `<option>${m}</option>`).join("");
-  resetForm(); await refresh();
+  const brands = Object.entries(cfg.brands).map(([b, r]) => [b, `${b} (${r})`]), sources = Object.entries(cfg.sources);
+  options($("fBrand"), brands, "All brands"); options($("nBrand"), brands); options($("lBrand"), brands);
+  options($("fProduct"), cfg.products.map(p => [p, p]), "All products");
+  options($("fSource"), sources, "All lists"); options($("nSource"), sources); options($("lSource"), sources);
+  $("nProducts").innerHTML = cfg.products.map(p => `<label><input type="checkbox" name="product" value="${p}"> ${p}</label>`).join("");
+  showModel(cfg.model);
+  await refresh();
 })();
 </script>
 </body>
