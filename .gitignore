@@ -12,3 +12,6 @@ exports/
 
 # Service account keys
 *.json
+
+# Python
+__pycache__/
