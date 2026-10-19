@@ -1,0 +1,14 @@
+# Real lead data never enters the repo (CLAUDE.md Section 10)
+data/
+exports/
+*.csv
+*.xlsx
+*.xls
+!samples/*.csv
+
+# Secrets
+.env
+.env.*
+
+# Service account keys
+*.json

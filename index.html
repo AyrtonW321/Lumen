@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumen</title>
+<style>
+  :root { --bg:#f6f6f4; --panel:#fff; --ink:#1d1d1b; --mute:#6b6b66; --line:#e2e2dc; --accent:#b8860b; --due:#2f7d4f; --warn:#b3412e; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.4 system-ui, sans-serif; background:var(--bg); color:var(--ink); display:grid; grid-template-columns:320px 1fr; height:100vh; }
+  aside, main { padding:16px; overflow:auto; }
+  aside { border-right:1px solid var(--line); background:var(--panel); }
+  input, select, button { font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; }
+  button { cursor:pointer; }
+  #search { width:100%; margin-bottom:8px; }
+  .co { padding:8px; border-radius:6px; cursor:pointer; display:flex; justify-content:space-between; gap:8px; }
+  .co:hover, .co.sel { background:#f1ede2; }
+  .tag { font-size:11px; padding:1px 6px; border-radius:10px; border:1px solid var(--line); color:var(--mute); white-space:nowrap; }
+  .tag.due { color:var(--due); border-color:var(--due); }
+  .tag.warn { color:var(--warn); border-color:var(--warn); }
+  details { margin-top:12px; }
+  details form { display:grid; gap:6px; margin-top:8px; }
+  h2 { margin:0 0 4px; font-size:20px; }
+  .meta { color:var(--mute); margin-bottom:16px; }
+  .keys { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 14px; }
+  .key { border:1px solid var(--line); border-radius:6px; padding:6px 10px; background:#fff; }
+  .key b { color:var(--accent); margin-right:4px; }
+  .key.on { background:var(--ink); color:#fff; }
+  .key.on b { color:#ffd76a; }
+  .label { font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--mute); }
+  .fields { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:8px; margin-bottom:12px; }
+  .fields label { display:grid; gap:2px; font-size:12px; color:var(--mute); }
+  #preview { font-family:ui-monospace, monospace; background:#fff; border:1px dashed var(--line); padding:8px; border-radius:6px; min-height:34px; }
+  table { border-collapse:collapse; width:100%; margin-top:16px; background:#fff; }
+  td, th { border-bottom:1px solid var(--line); padding:6px; text-align:left; font-size:13px; }
+  #toast { position:fixed; bottom:16px; right:16px; background:var(--ink); color:#fff; padding:10px 14px; border-radius:8px; opacity:0; transition:opacity .2s; }
+  #toast.show { opacity:1; }
+  .hint { color:var(--mute); font-size:12px; }
+  .empty { color:var(--mute); margin-top:40px; }
+  @media (max-width: 700px) { body { grid-template-columns:1fr; height:auto; } }
+</style>
+</head>
+<body>
+<aside>
+  <input id="search" placeholder="Search companies  ( / )" autocomplete="off">
+  <div id="list"></div>
+  <details id="newbox">
+    <summary>New company</summary>
+    <form id="newco">
+      <input name="name" placeholder="Company name" required>
+      <select name="market" id="market"></select>
+      <input name="list_name" placeholder="MyPhoner list (optional)">
+      <button>Add</button>
+    </form>
+  </details>
+  <p><button id="sync">Sync to Google Sheets</button></p>
+  <p class="hint">Caller: <input id="caller" size="10" placeholder="your name"></p>
+</aside>
+<main>
+  <div id="empty" class="empty">Pick a company on the left. Keys: <b>/</b> search, <b>↑↓</b> move, outcome letter, digits for role/objection, <b>Enter</b> save, <b>Esc</b> reset.</div>
+  <section id="panel" hidden>
+    <h2 id="coname"></h2>
+    <div class="meta" id="cometa"></div>
+
+    <div class="label">Outcome</div><div class="keys" id="outcomes"></div>
+    <div class="label">Role reached (digit, 0 skip)</div><div class="keys" id="roles"></div>
+    <div class="label">Objection (digit, NI only)</div><div class="keys" id="objections"></div>
+
+    <div class="fields">
+      <label>Contact name<input id="contact_name"></label>
+      <label>Callback date<input id="callback_date" type="date"></label>
+      <label>Note (business only)<input id="note"></label>
+      <label><span><input id="voicemail_left" type="checkbox"> Voicemail left</span></label>
+      <label><span><input id="gatekeeper_gave_name" type="checkbox"> Gatekeeper gave name/line</span></label>
+    </div>
+    <div class="label">MyPhoner comment (copied on save)</div>
+    <div id="preview"></div>
+    <p><button id="save">Save (Enter)</button></p>
+
+    <table><thead><tr><th>When</th><th>#</th><th>Outcome</th><th>Role</th><th>Comment</th></tr></thead><tbody id="history"></tbody></table>
+  </section>
+</main>
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const OUTCOME_KEYS = { v:"VM", x:"BAD", g:"GK", w:"WP", n:"NI", i:"INT", b:"BKD", d:"DNC" };
+let cfg, companies = [], view = [], sel = null, form;
+
+const api = (path, body) => fetch(path, body ? { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body) } : {})
+  .then(async r => { const j = await r.json(); if (!r.ok) throw new Error(j.error); return j; });
+
+function toast(msg) { $("toast").textContent = msg; $("toast").classList.add("show"); setTimeout(() => $("toast").classList.remove("show"), 2500); }
+
+function resetForm() {
+  form = { outcome:null, role_reached:null, objection:null, step:"outcome" };
+  for (const id of ["contact_name", "callback_date", "note"]) $(id).value = "";
+  for (const id of ["voicemail_left", "gatekeeper_gave_name"]) $(id).checked = false;
+  if (sel) $("voicemail_left").checked = sel.leave_voicemail_next;
+  render();
+}
+
+function keyRow(el, items, active) {
+  el.innerHTML = items.map(([k, label, val]) => `<span class="key ${val === active ? "on" : ""}"><b>${k}</b>${label}</span>`).join("");
+}
+
+function preview() {
+  if (!form.outcome) return "";
+  const t = new Date().toTimeString().slice(0, 5);
+  const cb = $("callback_date").value;
+  return [`${form.outcome} ${t}`, $("contact_name").value, form.role_reached, form.objection, cb && `call back ${cb}`, $("note").value]
+    .filter(Boolean).join(" - ");
+}
+
+function render() {
+  const q = $("search").value.toLowerCase();
+  view = companies.filter(c => c.name.toLowerCase().includes(q))
+    .sort((a, b) => (b.due - a.due) || (a.next_retry_date || "9").localeCompare(b.next_retry_date || "9") || a.name.localeCompare(b.name));
+  $("list").innerHTML = view.map(c => `<div class="co ${sel && c.id === sel.id ? "sel" : ""}" data-id="${c.id}">
+    <span>${esc(c.name)}</span><span>
+    ${c.dnc ? '<span class="tag warn">DNC</span>' : ""}
+    ${c.needs_new_contact ? '<span class="tag warn">new contact</span>' : ""}
+    ${c.due ? '<span class="tag due">due</span>' : ""}
+    <span class="tag">${c.last_outcome || "new"}</span></span></div>`).join("");
+
+  $("empty").hidden = !!sel; $("panel").hidden = !sel;
+  if (!sel) return;
+  $("coname").textContent = sel.name;
+  $("cometa").textContent = `${sel.market}${sel.list_name ? " · " + sel.list_name : ""} · ${sel.attempts} attempts · last ${sel.last_outcome || "—"} · next retry ${sel.next_retry_date || "—"}`
+    + (sel.leave_voicemail_next ? " · leave voicemail this attempt" : "")
+    + (sel.needs_new_contact ? " · 4+ voicemails: find a new number or contact" : "")
+    + (sel.dnc ? " · DO NOT CALL" : "");
+  keyRow($("outcomes"), Object.entries(OUTCOME_KEYS).map(([k, v]) => [k.toUpperCase(), cfg.outcomes[v], v]), form.outcome);
+  keyRow($("roles"), cfg.roles.map((r, i) => [i + 1, r, r]), form.role_reached);
+  keyRow($("objections"), cfg.objections.map((o, i) => [i + 1, o, o]), form.objection);
+  $("preview").textContent = preview();
+}
+
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+
+async function refresh() {
+  companies = await api("/api/companies");
+  if (sel) sel = companies.find(c => c.id === sel.id);
+  render();
+}
+
+async function select(c) {
+  sel = c; resetForm();
+  const calls = await api(`/api/companies/${c.id}/calls`);
+  $("history").innerHTML = calls.map(k => `<tr><td>${k.timestamp.replace("T", " ")}</td><td>${k.attempt_number}</td><td>${k.outcome}</td><td>${k.role_reached || ""}</td><td>${esc(k.myphoner_comment)}</td></tr>`).join("");
+}
+
+async function save() {
+  if (!sel || !form.outcome) return toast("Pick an outcome first");
+  const body = { company_id: sel.id, outcome: form.outcome, role_reached: form.role_reached, objection: form.objection,
+    contact_name: $("contact_name").value || null, callback_date: $("callback_date").value || null, note: $("note").value || null,
+    voicemail_left: $("voicemail_left").checked, gatekeeper_gave_name: $("gatekeeper_gave_name").checked, caller: $("caller").value || null };
+  try {
+    const r = await api("/api/calls", body);
+    try { await navigator.clipboard.writeText(r.myphoner_comment); toast(`Saved · copied: ${r.myphoner_comment}`); }
+    catch { toast(`Saved (copy failed): ${r.myphoner_comment}`); }
+    await refresh(); await select(sel);
+  } catch (e) { toast(e.message); }
+}
+
+document.addEventListener("keydown", e => {
+  const typing = ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName);
+  if (e.key === "Escape") { document.activeElement.blur(); resetForm(); return; }
+  if (e.key === "Enter" && sel && document.activeElement.closest("#newco") === null) { e.preventDefault(); save(); return; }
+  if (typing) return;
+  if (e.key === "/") { e.preventDefault(); $("search").focus(); return; }
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    const i = view.findIndex(c => sel && c.id === sel.id), j = Math.max(0, Math.min(view.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)));
+    if (view[j]) select(view[j]);
+    return;
+  }
+  if (!sel) return;
+  const k = e.key.toLowerCase();
+  if (OUTCOME_KEYS[k]) { form.outcome = OUTCOME_KEYS[k]; form.role_reached = form.objection = null; form.step = "role"; }
+  else if (/^\d$/.test(k) && form.step === "role") {
+    form.role_reached = k === "0" ? null : cfg.roles[+k - 1] || null;
+    form.step = form.outcome === "NI" ? "objection" : "done";
+  }
+  else if (/^\d$/.test(k) && form.step === "objection") { form.objection = k === "0" ? null : cfg.objections[+k - 1] || null; form.step = "done"; }
+  render();
+});
+
+$("search").addEventListener("input", render);
+$("search").addEventListener("keydown", e => { if (e.key === "Enter" && view[0]) { e.preventDefault(); e.stopPropagation(); select(view[0]); $("search").blur(); } });
+$("list").addEventListener("click", e => { const el = e.target.closest(".co"); if (el) select(companies.find(c => c.id === +el.dataset.id)); });
+for (const id of ["contact_name", "callback_date", "note"]) $(id).addEventListener("input", () => { $("preview").textContent = preview(); });
+$("save").addEventListener("click", save);
+$("newco").addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = Object.fromEntries(new FormData(e.target));
+  try { const { id } = await api("/api/companies", f); e.target.reset(); await refresh(); select(companies.find(c => c.id === id)); }
+  catch (err) { toast(err.message); }
+});
+$("sync").addEventListener("click", async () => {
+  $("sync").disabled = true;
+  try { const r = await api("/api/sync", {}); toast("Synced: " + Object.entries(r).map(([t, n]) => `${t} ${n}`).join(", ")); }
+  catch (e) { toast("Sync failed: " + e.message); }
+  $("sync").disabled = false;
+});
+try { $("caller").value = localStorage.getItem("lumen.caller") || ""; } catch {}
+$("caller").addEventListener("change", () => { try { localStorage.setItem("lumen.caller", $("caller").value); } catch {} });
+
+(async () => {
+  cfg = await api("/api/config");
+  $("market").innerHTML = cfg.markets.map(m => `<option>${m}</option>`).join("");
+  resetForm(); await refresh();
+})();
+</script>
+</body>
+</html>
