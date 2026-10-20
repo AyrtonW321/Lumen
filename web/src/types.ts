@@ -38,6 +38,8 @@ export interface Config {
 }
 
 export interface Contact {
+  status?: string | null;
+  sort_order?: number;
   id: number;
   lead_id: number;
   name: string;
@@ -75,6 +77,7 @@ export interface LeadRow {
   closed: string | null;
   next_action_date: string | null;
   last_outcome: string | null;
+  last_contacted?: string | null;
   attempts: number;
   advice: string[];
   tier: number;

@@ -43,3 +43,14 @@ Appt made by Ayrton for Tue Oct 27, 2026 at 10:00 AM""")
     def test_main_phone_counts_as_business(self):
         update_lead(self.conn, self.lead, phone="905-555-0000")
         self.assertIn("Phone number: 905-555-0000 (B)", appointment_text(lead_detail(self.conn, self.lead)))
+
+    def test_contact_classification_and_order_persist(self):
+        other = add_contact(self.conn, self.lead, "Sam", status="voicemail")
+        update_contact(self.conn, self.cid, sort_order=2, status="decision-maker")
+        update_contact(self.conn, other, sort_order=1)
+        contacts = lead_detail(self.conn, self.lead)["contacts"]
+        self.assertEqual([c["id"] for c in contacts], [other, self.cid])
+        self.assertEqual(contacts[0]["status"], "voicemail")
+        self.assertEqual(contacts[1]["status"], "decision-maker")
+        with self.assertRaises(ValueError):
+            update_contact(self.conn, self.cid, status="unknown")

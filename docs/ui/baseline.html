@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumen</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233b82f6'/%3E%3Ctext x='16' y='23' font-size='20' font-weight='800' text-anchor='middle' fill='white' font-family='sans-serif'%3EL%3C/text%3E%3C/svg%3E">
+</head>
+<body class="flex h-dvh bg-bg font-sans text-sm leading-[1.45] text-ink max-[900px]:flex-col">
+
+<!-- Left navigation: lists -->
+<aside class="flex w-[212px] shrink-0 flex-col gap-6 bg-white px-4 py-5 max-[900px]:w-full max-[900px]:flex-row max-[900px]:items-center max-[900px]:gap-3 max-[900px]:overflow-x-auto max-[900px]:py-3">
+  <div class="flex items-center gap-2.5 px-2 max-[900px]:px-0">
+    <span class="grid size-9 place-items-center rounded-xl bg-primary text-lg font-extrabold text-white shadow-[0_6px_16px_rgb(59_130_246/0.35)]">L</span>
+    <span class="text-lg font-extrabold tracking-tight">Lumen</span>
+  </div>
+  <nav class="flex flex-col gap-1 max-[900px]:flex-row" id="tabs"></nav>
+  <div class="mt-auto rounded-card bg-[color-mix(in_srgb,var(--color-primary)_9%,white)] p-4 max-[900px]:hidden">
+    <div class="text-xs font-extrabold text-primary">AI model</div>
+    <div class="mt-1 text-xs text-mute" id="modelInfo"></div>
+    <div class="mt-3 text-[11px] leading-relaxed text-mute">Keys: <b>/</b> search · <b>↑↓</b> move · outcome letter · <b>1-9</b> contact · <b>Enter</b> save · <b>Esc</b> reset</div>
+  </div>
+</aside>
+
+<div class="flex min-h-0 min-w-0 flex-1 flex-col">
+  <!-- Top bar -->
+  <header class="flex flex-wrap items-center gap-3 px-6 py-4">
+    <div class="relative w-full max-w-sm">
+      <span class="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-mute">⌕</span>
+      <input id="search" class="w-full rounded-full! border-transparent bg-white! py-2.5! pl-9! shadow-card" placeholder="Search leads  ( / )" autocomplete="off">
+    </div>
+    <span class="flex-1"></span>
+    <button id="train" class="btn-primary">Train AI</button>
+    <button id="sync">Sync to Sheets</button>
+    <label class="flex items-center gap-2 rounded-full bg-white py-1 pr-4 pl-1 shadow-card">
+      <span class="grid size-8 place-items-center rounded-full bg-primary/15 text-xs font-extrabold text-primary">You</span>
+      <input id="caller" class="w-[110px] border-transparent! bg-transparent! px-1! py-1!" placeholder="your name" autocomplete="lumen-caller">
+    </label>
+  </header>
+
+  <div class="grid min-h-0 flex-1 grid-cols-[minmax(300px,380px)_minmax(0,1fr)] gap-5 px-6 pb-5 max-[900px]:grid-cols-1 max-[900px]:overflow-y-auto">
+    <!-- Lead list -->
+    <section class="flex min-h-0 min-w-0 flex-col gap-3 overflow-hidden rounded-card bg-white p-4 shadow-card max-[900px]:max-h-[60vh] [&_input:not([type=checkbox])]:w-full [&_select]:w-full">
+      <div class="grid grid-cols-2 gap-2">
+        <select id="fBrand"></select>
+        <select id="fProduct"></select>
+      </div>
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-mute"><label class="flex items-center gap-1.5"><input type="checkbox" id="fDue"> Due now</label><label class="flex items-center gap-1.5"><input type="checkbox" id="fClosed"> Show closed</label><span class="ml-auto" id="sortNote"></span></div>
+      <div class="-mx-1 flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-1" id="list"></div>
+      <details class="border-t border-line pt-3">
+        <summary>+ New lead</summary>
+        <form id="newLead" class="mt-3 grid gap-2" autocomplete="off">
+          <input name="name" placeholder="Company name" required autocomplete="lumen-company">
+          <select name="brand" id="nBrand"></select>
+          <div class="flex flex-wrap items-center gap-3 text-[13px]" id="nProducts"></div>
+          <select name="source" id="nSource"></select>
+          <input name="list_name" placeholder="MyPhoner list (optional)" autocomplete="off">
+          <input name="phone" placeholder="Main phone (optional)" autocomplete="lumen-main-phone">
+          <button class="btn-primary">Add lead</button>
+        </form>
+      </details>
+    </section>
+
+    <!-- Lead detail -->
+    <main class="min-w-0 overflow-y-auto pr-1">
+      <div id="empty" class="mt-24 text-center text-[15px] font-semibold text-mute">Pick a lead on the left.</div>
+      <section id="panel" hidden>
+        <div class="card flex flex-wrap items-start justify-between gap-4 border-t-4 border-t-(--brand,var(--color-primary))" id="head">
+          <div class="flex items-start gap-4">
+            <span id="lAvatar" class="grid size-16 shrink-0 place-items-center rounded-full bg-[color-mix(in_srgb,var(--brand,var(--color-primary))_16%,white)] text-2xl font-extrabold text-(--brand,var(--color-primary))"></span>
+            <div>
+              <h2 class="m-0 flex flex-wrap items-center gap-1.5 text-[22px] font-extrabold"><span id="lName"></span><button class="btn-ghost btn-icon" id="copyName" title="Copy company name">📋</button></h2>
+              <div class="mt-1.5 flex flex-wrap items-center gap-2 text-mute" id="lMeta"></div>
+              <div class="mt-3 flex flex-wrap items-center gap-2"><span id="lProducts" class="flex flex-wrap items-center gap-2"></span></div>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center justify-end gap-2">
+            <button class="btn-success" id="winner">✓ Mark winner</button>
+            <button class="btn-danger" id="loser">✕ Mark loser</button>
+            <label class="hint">Move to list <select id="lSource"></select></label>
+            <select id="lBrand" title="Brand"></select>
+            <button class="btn-ghost btn-icon" id="close" title="Close lead">✕</button>
+          </div>
+        </div>
+
+        <div class="card border-l-[5px] border-l-accent">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h3 class="card-title m-0">Advice</h3>
+            <div class="flex flex-wrap items-center gap-2"><span class="hint">Teach the AI:</span><button id="good">👍 Good lead</button><button id="poor">👎 Poor lead</button></div>
+          </div>
+          <div id="lScore" class="mt-2"></div>
+          <ul id="lAdvice" class="mt-2 list-disc pl-[18px] [&>li:first-child]:font-bold"></ul>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">Contacts <span class="hint font-normal">(1-9 picks who you called)</span></h3>
+          <div id="contacts" class="flex flex-wrap gap-2"></div>
+          <details id="contactBox" class="mt-3">
+            <summary id="contactSummary">+ Add contact</summary>
+            <form id="contactForm" class="mt-3 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2" autocomplete="off">
+              <input name="name" placeholder="Name" required autocomplete="lumen-contact-name">
+              <input name="title" placeholder="Job title" autocomplete="lumen-contact-title">
+              <input name="phone" placeholder="Phone" autocomplete="lumen-contact-phone">
+              <input name="ext" placeholder="Ext" autocomplete="lumen-contact-ext">
+              <select name="phone_type" id="cType"></select>
+              <input name="email" placeholder="Email" autocomplete="lumen-contact-email">
+              <button class="btn-primary" id="contactSave">Add contact</button>
+            </form>
+          </details>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">Log activity</h3>
+          <div class="flex flex-wrap gap-2" id="outcomes"></div>
+          <div class="mt-4 flex flex-wrap items-end gap-3">
+            <label class="grid gap-1 text-xs font-bold text-mute">Callback / next call date<input id="callback_date" type="date" autocomplete="off"></label>
+            <button class="btn-outline" id="reschedule">Reschedule only</button>
+          </div>
+          <div class="mt-3 flex flex-wrap gap-2" id="quick"></div>
+          <label class="mt-4 grid gap-1 text-xs font-bold text-mute">Call log (what happened)<textarea id="note" autocomplete="off" placeholder="e.g. Reception said manager in Thursdays, prefers email"></textarea></label>
+          <div id="preview" class="my-3 min-h-9 rounded-xl border border-dashed border-line bg-soft px-3 py-2 font-mono text-[13px] wrap-anywhere"></div>
+          <button class="btn-primary px-5 py-2.5 text-[15px]" id="save">Save call (Enter)</button>
+        </div>
+
+        <details class="card" id="detailsBox">
+          <summary>Lead details &amp; appointment</summary>
+          <form id="detailsForm" class="mt-3 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3 [&_label]:grid [&_label]:gap-1 [&_label]:text-xs [&_label]:font-bold [&_label]:text-mute" autocomplete="off">
+            <label>Address (site visit)<input name="address" autocomplete="lumen-address"></label>
+            <label>Facility size<input name="facility_size" autocomplete="off"></label>
+            <label>Main phone<input name="phone" autocomplete="lumen-main-phone"></label>
+            <label>Solar reference<input name="solar_reference" placeholder="e.g. None" autocomplete="off"></label>
+            <label>Lighting reference<input name="lighting_reference" placeholder="e.g. Fluorescent" autocomplete="off"></label>
+            <label>Meeting type<select name="meeting_type" id="dMeeting"></select></label>
+            <label>Appointment date &amp; time<input name="appt_at" type="datetime-local" autocomplete="off"></label>
+          </form>
+          <div class="mt-3 flex flex-wrap items-center gap-2">
+            <button class="btn-primary" id="saveDetails">Save details</button>
+            <button class="btn-outline" id="copyAppt">📋 Copy appointment</button>
+            <span class="hint">Uses the contact picked above. Empty fields are left out.</span>
+          </div>
+        </details>
+
+        <div class="card">
+          <h3 class="card-title">History</h3>
+          <table class="w-full border-collapse [&_td]:border-b [&_td]:border-line [&_td]:px-2 [&_td]:py-2.5 [&_td]:text-left [&_td]:align-top [&_td]:text-[13px] [&_td]:wrap-anywhere [&_th]:border-b [&_th]:border-line [&_th]:px-2 [&_th]:py-2.5 [&_th]:text-left [&_th]:align-top [&_th]:text-xs [&_th]:font-bold [&_th]:text-mute">
+            <thead><tr><th>When</th><th>Outcome</th><th>Contact</th><th>Log</th></tr></thead>
+            <tbody id="history"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+<div id="toast" class="pointer-events-none fixed right-[22px] bottom-[22px] max-w-[520px] rounded-2xl bg-ink px-4 py-3 whitespace-pre-wrap text-white opacity-0 shadow-lg transition-opacity"></div>
+
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>

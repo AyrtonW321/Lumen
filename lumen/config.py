@@ -19,6 +19,7 @@ MEETING_TYPES = ["In-person", "Online", "Phone"]
 # positive: counts as a good result | closes: lead is done | move_to: list the lead moves to
 # PD11 mapping: RCP = GK, BUSY and EREQ = INT, HAS = MyPhoner loser.
 OUTCOMES = {
+    "OTHER":   dict(label="Other — describe in call log", key="o", retry=1),
     "VM":      dict(label="Voicemail / no answer", key="v", retry=2),
     "RCP":     dict(label="Receptionist", key="r", retry=1, human=True),
     "WP":      dict(label="Wrong person / left", key="w", retry=1, human=True),

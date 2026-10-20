@@ -42,6 +42,7 @@ export async function patch(fields: Record<string, unknown>, msg?: string): Prom
 export async function save(): Promise<void> {
   const { detail, form } = state;
   if (!detail || !form.outcome) return toast("Pick an outcome first");
+  if (form.outcome === "OTHER" && !$<HTMLTextAreaElement>("note").value.trim()) return toast("Describe what happened in the call log");
   const cfg = config();
   try {
     const r = await api<{ myphoner_comment: string }>("/api/activities", {

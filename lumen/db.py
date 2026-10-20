@@ -51,6 +51,8 @@ CREATE TABLE IF NOT EXISTS activities (
 """
 # Columns added after the first release. connect() adds any that an older database is missing.
 MIGRATIONS = [
+    ("contacts", "status", "TEXT"),
+    ("contacts", "sort_order", "INTEGER NOT NULL DEFAULT 0"),
     ("contacts", "ext", "TEXT"),
     ("contacts", "phone_type", "TEXT"),
     ("leads", "address", "TEXT"),

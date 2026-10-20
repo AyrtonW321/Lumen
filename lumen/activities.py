@@ -14,6 +14,8 @@ def myphoner_comment(outcome, now, contact=None, callback_date=None, note=None):
 def log_activity(conn, lead_id, outcome, contact_id=None, note=None, caller=None, callback_date=None, now=None):
     if outcome not in OUTCOMES:
         raise ValueError(f"unknown outcome {outcome!r}")
+    if outcome == "OTHER" and not (note or "").strip():
+        raise ValueError("describe what happened in the call log for Other")
     lead = conn.execute("SELECT * FROM leads WHERE id = ?", (lead_id,)).fetchone()
     if lead is None:
         raise ValueError("unknown lead")

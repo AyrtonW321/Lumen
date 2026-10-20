@@ -5,7 +5,7 @@
   --color-bg: #edf2fb;
   --color-panel: #fff;
   --color-ink: #1f2a44;
-  --color-mute: #8c97ad;
+  --color-mute: #59697e;
   --color-line: #e4eaf4;
   --color-soft: #f4f7fc;
   --color-primary: #3b82f6;
@@ -23,8 +23,8 @@
   --color-lighting: #3b82f6;
   --color-bess: #17b26a;
 
-  --font-sans: "Nunito Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --radius-card: 16px;
+  --font-sans: "Segoe UI", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius-card: 7px;
   --shadow-card: 0 4px 24px rgb(59 100 180 / 0.07);
 }
 

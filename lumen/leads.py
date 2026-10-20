@@ -56,7 +56,7 @@ def update_lead(conn, lead_id, **fields):
 def load_all(conn):
     """All leads with their contacts and activities (oldest first), keyed by lead id."""
     leads = {r["id"]: {**dict(r), "contacts": [], "activities": []} for r in conn.execute("SELECT * FROM leads")}
-    for r in conn.execute("SELECT * FROM contacts ORDER BY id"):
+    for r in conn.execute("SELECT * FROM contacts ORDER BY sort_order, id"):
         leads[r["lead_id"]]["contacts"].append(dict(r))
     for r in conn.execute("SELECT * FROM activities ORDER BY timestamp, id"):
         leads[r["lead_id"]]["activities"].append(dict(r))
@@ -79,6 +79,7 @@ def list_leads(conn, scorer=None, today=None):
             **{k: lead[k] for k in ("id", "name", "brand", "products", "source", "list_name", "label", "closed",
                                     "next_action_date")},
             "last_outcome": acts[-1]["outcome"] if acts else None,
+            "last_contacted": acts[-1]["timestamp"] if acts else None,
             "attempts": len(acts),
             "advice": tips,
             "tier": tier,

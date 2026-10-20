@@ -1,11 +1,11 @@
-import { closeLead, patch, pickOutcome, refresh, reloadDetail, resetContactForm, resetForm, save, select } from "./actions";
+import { bindContacts } from "./contact-events";
+import { closeLead, patch, pickOutcome, refresh, reloadDetail, resetForm, save, select } from "./actions";
 import { QUICK, type QuickKind } from "./constants";
 import { quickDate } from "./dates";
-import { QUICK_BUTTON } from "./format";
 import { renderList, renderPanel, renderPreview, showModel } from "./render";
 import { config, currentLead, state } from "./state";
 import type { ModelMetrics, Source, SyncCounts, TabId } from "./types";
-import { $, api, copy, errorMessage, field, store, toast } from "./util";
+import { $, api, copy, errorMessage, store, toast } from "./util";
 
 /** The closest ancestor of an event target matching `selector`. */
 const closest = (e: Event, selector: string): HTMLElement | null => (e.target as Element).closest<HTMLElement>(selector);
@@ -37,7 +37,12 @@ function onKeydown(e: KeyboardEvent): void {
 }
 
 function bindLeadList(): void {
-  for (const id of ["search", "fBrand", "fProduct", "fDue", "fClosed"]) $(id).addEventListener("input", renderList);
+  for (const id of ["search", "fBrand", "fProduct", "fDue", "fStatus", "fQuality"]) $(id).addEventListener("input", renderList);
+  $("resetFilters").addEventListener("click", () => {
+    for (const id of ["fBrand", "fStatus", "fQuality"]) $<HTMLSelectElement>(id).value = "";
+    $("fProduct").querySelectorAll<HTMLInputElement>("input").forEach(i => i.checked = false);
+    $<HTMLInputElement>("fDue").checked = false; renderList();
+  });
   $("tabs").addEventListener("click", e => {
     const b = closest(e, "[data-tab]");
     if (b) { state.tab = b.dataset.tab as TabId; store("lumen.tab", state.tab); renderList(); }
@@ -84,41 +89,10 @@ function bindLeadHeader(): void {
   }
 }
 
-function bindContacts(): void {
-  $("contacts").addEventListener("click", e => {
-    if (closest(e, "[data-copy]")) return;
-    const ed = closest(e, "[data-edit]");
-    if (ed) {
-      const c = currentLead().contacts.find(c => c.id === Number(ed.dataset.edit)), f = $<HTMLFormElement>("contactForm");
-      if (!c) return;
-      for (const k of ["name", "title", "phone", "ext", "phone_type", "email"] as const) field(f, k).value = c[k] ?? "";
-      state.editingContact = c.id; $("contactSave").textContent = "Save contact"; $("contactSummary").textContent = `Edit ${c.name}`;
-      $<HTMLDetailsElement>("contactBox").open = true;
-      return;
-    }
-    const el = closest(e, "[data-c]");
-    if (el) { state.form.contact_id = el.dataset.c ? Number(el.dataset.c) : null; renderPanel(); }
-  });
-  const form = $<HTMLFormElement>("contactForm");
-  form.addEventListener("submit", async e => {
-    e.preventDefault();
-    const body = Object.fromEntries(new FormData(form));
-    try {
-      if (state.editingContact) { await api(`/api/contacts/${state.editingContact}`, body); toast("Contact saved"); }
-      else { state.form.contact_id = (await api<{ id: number }>(`/api/leads/${currentLead().id}/contacts`, body)).id; }
-      resetContactForm();
-      await reloadDetail();
-    } catch (err) { toast(errorMessage(err)); }
-  });
-}
-
 function bindActivityLog(): void {
-  $("outcomes").addEventListener("click", e => { const el = closest(e, "[data-o]"); if (el?.dataset.o) { pickOutcome(el.dataset.o); renderPanel(); } });
-  $("quick").innerHTML = QUICK.map(([k, l]) => `<button class="${QUICK_BUTTON}" data-q="${k}">${l}</button>`).join("");
-  $("quick").addEventListener("click", e => {
-    const k = closest(e, "[data-q]")?.dataset.q as QuickKind | undefined;
-    if (k) { $<HTMLInputElement>("callback_date").value = quickDate(k); renderPreview(); }
-  });
+  $("outcomes").addEventListener("change", e => { const value = (e.target as HTMLSelectElement).value; state.form.outcome = value || null; if (value) pickOutcome(value); renderPanel(); });
+  $("quick").innerHTML = '<option value="">Quick callback date</option>' + QUICK.map(([k,l]) => `<option value="${k}">${l}</option>`).join("");
+  $("quick").addEventListener("change", e => { const el = e.target as HTMLSelectElement; if (el.value) { $<HTMLInputElement>("callback_date").value = quickDate(el.value as QuickKind); el.value = ""; renderPreview(); } });
   $("reschedule").addEventListener("click", () => {
     const d = $<HTMLInputElement>("callback_date").value;
     if (!d) return toast("Pick a date or a quick button first");
@@ -130,11 +104,11 @@ function bindActivityLog(): void {
 
 function bindDetails(): void {
   const form = $<HTMLFormElement>("detailsForm");
-  $("saveDetails").addEventListener("click", () => void patch(Object.fromEntries(new FormData(form)), "Details saved"));
+  $("saveDetails").addEventListener("click", () => { void saveAppointmentFields(form).catch(() => {}); });
   $("copyAppt").addEventListener("click", async () => {
     try {
       const id = currentLead().id;
-      await api(`/api/leads/${id}`, Object.fromEntries(new FormData(form)));
+      await saveAppointmentFields(form);
       await reloadDetail();
       const q = new URLSearchParams({ contact_id: String(state.form.contact_id ?? ""), caller: $<HTMLInputElement>("caller").value });
       const { text } = await api<{ text: string }>(`/api/leads/${id}/appointment?${q}`);
@@ -159,6 +133,7 @@ function bindHeader(): void {
     } catch (e) { toast("Sync failed: " + errorMessage(e)); }
     sync.disabled = false;
   });
+  $("saveMainPhone").addEventListener("click", () => void patch({ phone: $<HTMLInputElement>("mainPhone").value }, "Main line saved"));
   caller.value = store("lumen.caller") ?? "";
   caller.addEventListener("change", () => store("lumen.caller", caller.value));
 }
@@ -166,4 +141,12 @@ function bindHeader(): void {
 export function bindEvents(): void {
   document.addEventListener("keydown", onKeydown);
   bindLeadList(); bindLeadHeader(); bindContacts(); bindActivityLog(); bindDetails(); bindHeader();
+}
+
+async function saveAppointmentFields(form: HTMLFormElement): Promise<void> {
+  const {contact_name,contact_title,contact_phone,contact_email,...lead} = Object.fromEntries(new FormData(form));
+  try {
+    if (state.form.contact_id) await api(`/api/contacts/${state.form.contact_id}`, {name:contact_name,title:contact_title,phone:contact_phone,email:contact_email});
+    await api(`/api/leads/${currentLead().id}`,lead); await reloadDetail(); toast("Details saved");
+  } catch(e) { toast(errorMessage(e)); throw e; }
 }
