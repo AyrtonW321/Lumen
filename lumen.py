@@ -571,9 +571,14 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
-if __name__ == "__main__":
+def make_server(port=PORT):
+    """Port 0 picks any free port. Threaded: browsers hold idle preconnect sockets that would block a single thread."""
     Handler.conn = connect()
     Handler.scorer = load_scorer()
+    return ThreadingHTTPServer(("127.0.0.1", port), Handler)
+
+
+if __name__ == "__main__":
+    server = make_server()
     print(f"Lumen running at http://127.0.0.1:{PORT}  (data: {DB_PATH})")
-    # threaded: Chrome holds idle preconnect sockets that would block a single-threaded server
-    ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
+    server.serve_forever()

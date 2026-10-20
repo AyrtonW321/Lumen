@@ -16,6 +16,16 @@ py -3.12 lumen.py
 
 Open http://127.0.0.1:8765. After updating the code, stop the running copy (`Ctrl+C`) and start it again. Older databases are upgraded automatically on start. Data lives in `data/lumen.db` and the model in `data/model.pt`. Both are gitignored, so back them up. Only use fake data until Haneco approves in writing.
 
+### Desktop window (optional)
+
+Run Lumen in its own window instead of a browser tab:
+
+```bash
+py -3.12 -m pip install pywebview
+```
+
+Then double-click **`Lumen.bat`**, or run `py -3.12 desktop.py`. For a desktop icon, right-click `Lumen.bat` → Show more options → Send to → Desktop (create shortcut). Closing the window stops Lumen. It uses the same `data/lumen.db` as the browser version, so don't run both at once. The window's settings (caller name, last tab) are kept in `%LOCALAPPDATA%\Lumen`, outside OneDrive, because OneDrive locks those files.
+
 ## What it tracks
 
 - **Lead:** company, brand (Haneco / JWL / Exceledy), products (Solar, Lighting, BESS, any mix), main phone, and details for appointments (address, facility size, solar and lighting reference, meeting type, appointment time).
