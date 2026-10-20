@@ -1,5 +1,5 @@
 import { BRAND_VAR, PRODUCT_VAR, TABS } from "./constants";
-import { brandChip, keyClass, leadRowClass, phoneText, pill, productChip, SMALL, tabClass } from "./format";
+import { avatar, brandChip, initial, keyClass, leadRowClass, phoneText, pill, productChip, SMALL, tabClass } from "./format";
 import { config, currentLead, state } from "./state";
 import type { LeadRow, ModelMetrics, Product } from "./types";
 import { $, esc, field } from "./util";
@@ -14,7 +14,7 @@ export function renderTabs(): void {
   const { leads, tab } = state;
   const count = (t: string) => t === "all" ? leads.length : leads.filter(l => l.source === t).length;
   $("tabs").innerHTML = TABS.map(([t, label]) =>
-    `<button class="${tabClass(t, tab === t)}" data-tab="${t}"><b>${count(t)}</b>${label}</button>`).join("");
+    `<button class="${tabClass(t, tab === t)}" data-tab="${t}"><span>${label}</span><b>${count(t)}</b></button>`).join("");
 }
 
 export function renderList(): void {
@@ -29,12 +29,13 @@ export function renderList(): void {
     && (!$<HTMLInputElement>("fDue").checked || l.due)).sort(sortKey);
   $("sortNote").textContent = leads.some(l => l.score != null) ? "Sorted by AI score" : "Sorted by advice";
   $("list").innerHTML = state.view.map(l => `<div class="${leadRowClass(sel === l.id)}" data-id="${l.id}" style="--brand:var(${BRAND_VAR[l.brand]})">
+    ${avatar(l.name)}<div class="min-w-0 flex-1">
     <div class="flex items-baseline justify-between gap-2"><span class="min-w-0 font-semibold wrap-anywhere">${esc(l.name)}</span>${l.score != null ? pill(l.score) : l.closed ? `<span class="chip">${l.closed}</span>` : ""}</div>
     <small class="${SMALL}">${brandChip(l.brand)} ${l.products ? (l.products.split(",") as Product[]).map(productChip).join(" ") : ""}
       ${tab === "all" ? `<span class="chip">${cfg.sources[l.source]}</span>` : ""}
       ${l.label ? `<span class="chip" style="--c:var(${l.label === "good" ? "--color-success" : "--color-danger"})">${l.label}</span>` : ""}
       · ${l.last_outcome ?? "not called"}${l.next_action_date && l.open ? " · next " + l.next_action_date : ""}</small>
-    ${l.advice[0] ? `<small class="${SMALL} text-ink">${esc(l.advice[0])}</small>` : ""}</div>`).join("") || '<p class="hint">No leads here.</p>';
+    ${l.advice[0] ? `<small class="${SMALL} text-ink">${esc(l.advice[0])}</small>` : ""}</div></div>`).join("") || '<p class="hint">No leads here.</p>';
 }
 
 export function renderPanel(): void {
@@ -44,7 +45,7 @@ export function renderPanel(): void {
   const cfg = config();
   const row = leads.find(l => l.id === detail.id);
   $("head").style.setProperty("--brand", `var(${BRAND_VAR[detail.brand]})`);
-  $("lName").textContent = detail.name;
+  $("lName").textContent = detail.name; $("lAvatar").textContent = initial(detail.name);
   const sourceColor = detail.source === "winner" ? "--color-success" : detail.source === "loser" ? "--color-danger" : "--color-primary";
   $("lMeta").innerHTML = `${brandChip(detail.brand)} <span>${esc(cfg.brands[detail.brand])}</span>
     <span class="chip" style="--c:var(${sourceColor})">${cfg.sources[detail.source]}</span>

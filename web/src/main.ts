@@ -1,3 +1,4 @@
+import "@fontsource-variable/nunito";
 import "./styles.css";
 import { refresh } from "./actions";
 import { TABS } from "./constants";

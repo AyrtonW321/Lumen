@@ -2,29 +2,30 @@
 
 /* static: emit every token as a CSS variable. Markup and TS reference some as var(--color-*) strings. */
 @theme static {
-  --color-bg: #eef1f6;
+  --color-bg: #edf2fb;
   --color-panel: #fff;
-  --color-ink: #18202f;
-  --color-mute: #64708a;
-  --color-line: #dde2ec;
-  --color-soft: #f4f6fb;
-  --color-primary: #2563eb;
-  --color-success: #16a34a;
-  --color-danger: #dc2626;
-  --color-accent: #d97706;
-  --color-navy: #1e3a8a;
+  --color-ink: #1f2a44;
+  --color-mute: #8c97ad;
+  --color-line: #e4eaf4;
+  --color-soft: #f4f7fc;
+  --color-primary: #3b82f6;
+  --color-success: #17b26a;
+  --color-danger: #f04438;
+  --color-accent: #f79009;
+  --color-navy: #1d4ed8;
   --color-sun: #fde68a;
 
-  --color-haneco: #0e7490;
-  --color-jwl: #7c3aed;
-  --color-exceledy: #ea580c;
+  --color-haneco: #0e9fbc;
+  --color-jwl: #7c5cfc;
+  --color-exceledy: #f97316;
 
-  --color-solar: #ca8a04;
-  --color-lighting: #0284c7;
-  --color-bess: #059669;
+  --color-solar: #e0a100;
+  --color-lighting: #3b82f6;
+  --color-bess: #17b26a;
 
-  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
-  --radius-card: 10px;
+  --font-sans: "Nunito Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius-card: 16px;
+  --shadow-card: 0 4px 24px rgb(59 100 180 / 0.07);
 }
 
 /* Element defaults. Utilities in the markup override these. */
@@ -32,61 +33,64 @@
   input,
   select,
   textarea {
-    @apply min-w-0 rounded-lg border border-line bg-white px-[9px] py-[7px];
+    @apply min-w-0 rounded-xl border border-line bg-soft px-3 py-2 text-[13px] placeholder:text-mute;
   }
   input:focus,
   select:focus,
   textarea:focus {
-    @apply border-primary outline-2 outline-primary/40;
+    @apply border-primary bg-white outline-2 outline-primary/25;
   }
   button {
-    @apply cursor-pointer rounded-lg border border-line bg-white px-3 py-[7px] font-medium hover:brightness-95 disabled:cursor-wait disabled:opacity-60;
+    @apply cursor-pointer rounded-xl border border-line bg-white px-3.5 py-2 text-[13px] font-semibold hover:brightness-95 disabled:cursor-wait disabled:opacity-60;
   }
   textarea {
     @apply min-h-[70px] w-full resize-y;
   }
   input[type="date"],
   input[type="datetime-local"] {
-    @apply h-11 min-w-[200px] px-2.5 py-1.5 text-base;
+    @apply h-11 min-w-[200px] px-3 text-base;
   }
   input[type="date"]::-webkit-calendar-picker-indicator,
   input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     @apply size-6 cursor-pointer;
   }
+  input[type="checkbox"] {
+    @apply size-4 accent-primary;
+  }
   details > summary {
-    @apply cursor-pointer font-semibold text-primary;
+    @apply cursor-pointer text-[13px] font-bold text-primary;
   }
 }
 
 /* Only things repeated across the static page and the TS templates. Everything else is utilities in the markup. */
 @layer components {
   .btn-primary {
-    @apply border-primary bg-primary font-semibold text-white;
+    @apply border-primary bg-primary text-white shadow-[0_6px_16px_rgb(59_130_246/0.28)];
   }
   .btn-success {
-    @apply border-success bg-success font-semibold text-white;
+    @apply border-transparent bg-success/12 text-success hover:bg-success hover:text-white;
   }
   .btn-danger {
-    @apply border-danger bg-danger font-semibold text-white;
+    @apply border-transparent bg-danger/10 text-danger hover:bg-danger hover:text-white;
   }
   .btn-outline {
-    @apply border-primary bg-white font-semibold text-primary;
+    @apply border-primary/40 bg-white text-primary;
   }
   .btn-ghost {
     @apply border-transparent bg-transparent text-mute hover:bg-soft;
   }
   .btn-icon {
-    @apply rounded-md px-[7px] py-[3px] text-[13px] leading-none;
+    @apply rounded-lg px-[7px] py-[3px] text-[13px] leading-none;
   }
   .on {
-    @apply border-ink bg-ink text-white;
+    @apply border-primary bg-primary text-white;
   }
 
   .card {
-    @apply mb-3.5 rounded-card border border-line bg-white px-4 py-3.5 shadow-xs;
+    @apply mb-4 rounded-card bg-white p-5 shadow-card;
   }
   .card-title {
-    @apply mb-2.5 text-xs font-bold tracking-wider text-mute uppercase;
+    @apply mb-3 text-sm font-extrabold text-ink;
   }
   .hint {
     @apply text-xs text-mute;
@@ -94,24 +98,27 @@
 
   /* --c sets the colour: style="--c:var(--color-haneco)" */
   .chip {
-    @apply inline-block rounded-full border border-[color-mix(in_srgb,var(--c,var(--color-mute))_35%,white)] bg-[color-mix(in_srgb,var(--c,var(--color-mute))_13%,white)] px-2 py-px text-[11px] font-semibold whitespace-nowrap text-(--c,var(--color-mute));
+    @apply inline-block rounded-full bg-[color-mix(in_srgb,var(--c,var(--color-mute))_14%,white)] px-2.5 py-0.5 text-[11px] font-bold whitespace-nowrap text-(--c,var(--color-mute));
   }
 
   .key {
-    @apply inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-line bg-white px-2.5 py-1.5;
+    @apply inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-line bg-white px-2.5 py-1.5 text-[13px] font-semibold;
+  }
+  .key.on {
+    @apply border-primary bg-primary text-white;
   }
   .key > b {
-    @apply inline-grid h-5 min-w-5 place-items-center rounded-[5px] bg-[color-mix(in_srgb,var(--color-accent)_18%,white)] px-1 text-xs text-[#92400e];
+    @apply inline-grid h-5 min-w-5 place-items-center rounded-md bg-primary/10 px-1 text-xs text-primary;
   }
   .key .phone {
-    @apply text-mute;
+    @apply font-normal text-mute;
   }
   .key.on > b {
-    @apply bg-sun text-navy;
+    @apply bg-white/25 text-white;
   }
   .key.on .phone,
   .key.on .btn-ghost {
-    @apply text-slate-200;
+    @apply text-white/80;
   }
   .key.on .btn-ghost:hover {
     @apply bg-white/15;
