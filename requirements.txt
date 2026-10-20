@@ -1,0 +1,4 @@
+# Optional extras. The core app needs only the Python standard library.
+torch      # AI scoring: py -3.12 -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+pywebview  # desktop window
+gspread    # Google Sheets sync

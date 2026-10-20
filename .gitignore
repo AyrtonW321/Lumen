@@ -12,6 +12,15 @@ exports/
 
 # Service account keys
 *.json
+!web/package.json
+!web/package-lock.json
+!web/tsconfig.json
 
 # Python
 __pycache__/
+.vscode/
+.idea/
+
+# Web build
+web/node_modules/
+web/dist/

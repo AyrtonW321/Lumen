@@ -4,6 +4,14 @@ Local lead tracker and call logger for Haneco (Canada), JWL (Chicago) and Excele
 
 ## Run
 
+The UI is TypeScript + Tailwind, so build it once (needs Node 20+). `Lumen.bat` does this for you the first time.
+
+```bash
+cd web
+npm install
+npm run build
+```
+
 This PC has several Pythons. Use the same one for installing and running:
 
 ```bash
@@ -11,7 +19,7 @@ py -3.12 -m pip install torch --index-url https://download.pytorch.org/whl/cpu
 ```
 
 ```bash
-py -3.12 lumen.py
+py -3.12 -m lumen
 ```
 
 Open http://127.0.0.1:8765. After updating the code, stop the running copy (`Ctrl+C`) and start it again. Older databases are upgraded automatically on start. Data lives in `data/lumen.db` and the model in `data/model.pt`. Both are gitignored, so back them up. Only use fake data until Haneco approves in writing.
@@ -24,7 +32,32 @@ Run Lumen in its own window instead of a browser tab:
 py -3.12 -m pip install pywebview
 ```
 
-Then double-click **`Lumen.bat`**, or run `py -3.12 desktop.py`. For a desktop icon, right-click `Lumen.bat` → Show more options → Send to → Desktop (create shortcut). Closing the window stops Lumen. It uses the same `data/lumen.db` as the browser version, so don't run both at once. The window's settings (caller name, last tab) are kept in `%LOCALAPPDATA%\Lumen`, outside OneDrive, because OneDrive locks those files.
+Then double-click **`Lumen.bat`**, or run `py -3.12 -m lumen.desktop`. For a desktop icon, right-click `Lumen.bat` → Show more options → Send to → Desktop (create shortcut). Closing the window stops Lumen. It uses the same `data/lumen.db` as the browser version, so don't run both at once. The window's settings (caller name, last tab) are kept in `%LOCALAPPDATA%\Lumen`, outside OneDrive, because OneDrive locks those files.
+
+## Project layout
+
+```
+lumen/            Python package (run with python -m lumen)
+  config.py       paths and tunables: brands, outcomes, limits
+  db.py           schema, migrations, connect()
+  leads.py        lead writes, load_all, list_leads, lead_detail
+  contacts.py     contact writes
+  activities.py   log_activity, MyPhoner comment
+  advice.py       rule-based next steps
+  features.py     model inputs and training examples
+  model.py        PyTorch scorer
+  appointment.py  calendar-invite text
+  sheets.py       Google Sheets sync
+  server.py       HTTP API + static files
+  desktop.py      pywebview window
+web/              browser UI: TypeScript + Tailwind CSS v4, built by Vite into web/dist
+  index.html      page shell (Tailwind utilities)
+  src/            types.ts, state.ts, render.ts, actions.ts, events.ts, main.ts, styles.css, ...
+tests/            Python unittests (synthetic data only)
+docs/PLAN.md      build plan for the October 20 changes
+```
+
+Dependency direction: `config` <- `db`/`timeutil` <- `features` <- `advice` <- `leads` <- `server`. No module imports `server`.
 
 ## What it tracks
 
@@ -66,7 +99,7 @@ Appt made by Ayrton for Tue Oct 27, 2026 at 10:00 AM
 
 Browser autofill is turned off on every field.
 
-Other keys: `/` search, `↑` `↓` move, `1`–`9` pick contact, `0` main line, `Enter` save (`Ctrl+Enter` inside notes), `Esc` reset. Every value above is set at the top of `lumen.py`.
+Other keys: `/` search, `↑` `↓` move, `1`–`9` pick contact, `0` main line, `Enter` save (`Ctrl+Enter` inside notes), `Esc` reset. Every value above is set in `lumen/config.py`.
 
 ## Advice
 
@@ -78,7 +111,7 @@ Rules read each lead's history and say what to do next, for example:
 
 ## The AI (PyTorch)
 
-Read [model.py](model.py). It is commented step by step.
+Read [lumen/model.py](lumen/model.py). It is commented step by step.
 
 - **What it predicts:** the chance the next touch on a lead goes well (interested, email request, or booked).
 - **What it learns from:** every logged call (what the lead looked like before the call, and how the call went), plus your **Good lead / Poor lead** buttons, which count 3×.
@@ -99,8 +132,18 @@ Leads in Winners also count as good examples. Click **Train AI** whenever you ha
    ```
 5. Click **Sync to Sheets**. It rewrites only the `Lumen Leads`, `Lumen Contacts` and `Lumen Activities` tabs. Your existing tabs are left alone. Mapping onto your current tracker's columns waits on a screenshot of them (CLAUDE.md, Section 9, Q2).
 
+## Develop the UI
+
+```bash
+py -3.12 -m lumen          # API on :8765
+cd web && npm run dev      # hot-reloading UI on :5173, /api proxied to :8765
+```
+
+After changing `web/src`, run `npm run build` again so the Python server (and the desktop window) serves the new version. `web/dist` and `web/node_modules` are gitignored.
+
 ## Check
 
 ```bash
-py -3.12 test_lumen.py
+py -3.12 -m unittest discover -s tests -t .
+cd web && npm run typecheck && npm test
 ```

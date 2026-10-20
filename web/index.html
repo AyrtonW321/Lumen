@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumen</title>
+</head>
+<body class="flex h-dvh flex-col bg-bg font-sans text-sm leading-[1.45] text-ink">
+<header class="flex items-center gap-3 bg-linear-to-r from-navy via-primary via-60% to-haneco px-[18px] py-2.5 text-white">
+  <h1 class="m-0 text-xl tracking-wide">Lumen<span class="text-sun">.</span></h1>
+  <span class="hint text-blue-100" id="modelInfo"></span>
+  <span class="flex-1"></span>
+  <label class="hint text-blue-100">Caller <input id="caller" class="w-[120px] px-2 py-[5px] text-ink" placeholder="your name" autocomplete="lumen-caller"></label>
+  <button id="train" class="border-sun bg-sun font-bold text-navy">Train AI</button>
+  <button id="sync" class="border-white/30 bg-white/15 text-white">Sync to Sheets</button>
+</header>
+
+<div class="grid min-h-0 flex-1 grid-cols-[380px_minmax(0,1fr)] max-[820px]:grid-cols-1">
+<aside class="flex min-w-0 flex-col gap-2 overflow-x-hidden overflow-y-auto border-r border-line bg-panel p-3 max-[820px]:max-h-[50vh] [&_input:not([type=checkbox])]:w-full [&_select]:w-full">
+  <div class="grid grid-cols-5 gap-1 rounded-card bg-soft p-1" id="tabs"></div>
+  <input id="search" placeholder="Search leads  ( / )" autocomplete="off">
+  <div class="grid grid-cols-2 gap-1.5">
+    <select id="fBrand"></select>
+    <select id="fProduct"></select>
+  </div>
+  <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-mute"><label><input type="checkbox" id="fDue"> Due now</label><label><input type="checkbox" id="fClosed"> Show closed</label><span id="sortNote"></span></div>
+  <div class="flex flex-col gap-1" id="list"></div>
+  <details>
+    <summary>+ New lead</summary>
+    <form id="newLead" class="mt-2 grid gap-1.5" autocomplete="off">
+      <input name="name" placeholder="Company name" required autocomplete="lumen-company">
+      <select name="brand" id="nBrand"></select>
+      <div class="flex flex-wrap items-center gap-2" id="nProducts"></div>
+      <select name="source" id="nSource"></select>
+      <input name="list_name" placeholder="MyPhoner list (optional)" autocomplete="off">
+      <input name="phone" placeholder="Main phone (optional)" autocomplete="lumen-main-phone">
+      <button class="btn-primary">Add lead</button>
+    </form>
+  </details>
+</aside>
+
+<main class="min-w-0 overflow-y-auto px-5 py-4">
+  <div id="empty" class="mt-[60px] text-center text-[15px] text-mute">Pick a lead on the left.<br><span class="hint">Keys: <b>/</b> search · <b>↑↓</b> move · outcome letter · <b>1-9</b> contact · <b>Enter</b> save · <b>Esc</b> reset</span></div>
+  <section id="panel" hidden>
+    <div class="card flex flex-wrap items-start justify-between gap-3 border-t-4 border-t-(--brand,var(--color-primary))" id="head">
+      <div>
+        <h2 class="m-0 flex flex-wrap items-center gap-1.5 text-[22px]"><span id="lName"></span><button class="btn-ghost btn-icon" id="copyName" title="Copy company name">📋</button></h2>
+        <div class="mt-1.5 flex flex-wrap items-center gap-2 text-mute" id="lMeta"></div>
+        <div class="mt-2.5 flex flex-wrap items-center gap-2"><span id="lProducts" class="flex flex-wrap items-center gap-2"></span></div>
+      </div>
+      <div class="flex flex-wrap items-center justify-end gap-2">
+        <button class="btn-success" id="winner">✓ Mark winner</button>
+        <button class="btn-danger" id="loser">✕ Mark loser</button>
+        <label class="hint">Move to list <select id="lSource"></select></label>
+        <select id="lBrand" title="Brand"></select>
+        <button class="btn-ghost btn-icon" id="close" title="Close lead">✕</button>
+      </div>
+    </div>
+
+    <div class="card border-l-5 border-l-accent">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h3 class="card-title m-0">Advice</h3>
+        <div class="flex flex-wrap items-center gap-2"><span class="hint">Teach the AI:</span><button id="good">👍 Good lead</button><button id="poor">👎 Poor lead</button></div>
+      </div>
+      <div id="lScore" class="mt-2"></div>
+      <ul id="lAdvice" class="mt-1.5 list-disc pl-[18px] [&>li:first-child]:font-semibold"></ul>
+    </div>
+
+    <div class="card">
+      <h3 class="card-title">Contacts <span class="hint font-normal normal-case">(1-9 picks who you called)</span></h3>
+      <div id="contacts" class="flex flex-wrap gap-1.5"></div>
+      <details id="contactBox" class="mt-2.5">
+        <summary id="contactSummary">+ Add contact</summary>
+        <form id="contactForm" class="mt-2 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2" autocomplete="off">
+          <input name="name" placeholder="Name" required autocomplete="lumen-contact-name">
+          <input name="title" placeholder="Job title" autocomplete="lumen-contact-title">
+          <input name="phone" placeholder="Phone" autocomplete="lumen-contact-phone">
+          <input name="ext" placeholder="Ext" autocomplete="lumen-contact-ext">
+          <select name="phone_type" id="cType"></select>
+          <input name="email" placeholder="Email" autocomplete="lumen-contact-email">
+          <button class="btn-primary" id="contactSave">Add contact</button>
+        </form>
+      </details>
+    </div>
+
+    <div class="card">
+      <h3 class="card-title">Log activity</h3>
+      <div class="flex flex-wrap gap-1.5" id="outcomes"></div>
+      <div class="mt-3 flex flex-wrap items-end gap-2">
+        <label class="grid gap-[3px] text-xs font-semibold text-mute">Callback / next call date<input id="callback_date" type="date" autocomplete="off"></label>
+        <button class="btn-outline" id="reschedule">Reschedule only</button>
+      </div>
+      <div class="mt-2 flex flex-wrap gap-1.5" id="quick"></div>
+      <label class="mt-3 grid gap-[3px] text-xs font-semibold text-mute">Call log (what happened)<textarea id="note" autocomplete="off" placeholder="e.g. Reception said manager in Thursdays, prefers email"></textarea></label>
+      <div id="preview" class="my-2.5 min-h-9 rounded-lg border border-dashed border-line bg-soft px-2.5 py-2 font-mono wrap-anywhere"></div>
+      <button class="btn-primary px-[18px] py-2.5 text-[15px]" id="save">Save call (Enter)</button>
+    </div>
+
+    <details class="card" id="detailsBox">
+      <summary>Lead details &amp; appointment</summary>
+      <form id="detailsForm" class="mt-2.5 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2 [&_label]:grid [&_label]:gap-[3px] [&_label]:text-xs [&_label]:font-semibold [&_label]:text-mute" autocomplete="off">
+        <label>Address (site visit)<input name="address" autocomplete="lumen-address"></label>
+        <label>Facility size<input name="facility_size" autocomplete="off"></label>
+        <label>Main phone<input name="phone" autocomplete="lumen-main-phone"></label>
+        <label>Solar reference<input name="solar_reference" placeholder="e.g. None" autocomplete="off"></label>
+        <label>Lighting reference<input name="lighting_reference" placeholder="e.g. Fluorescent" autocomplete="off"></label>
+        <label>Meeting type<select name="meeting_type" id="dMeeting"></select></label>
+        <label>Appointment date &amp; time<input name="appt_at" type="datetime-local" autocomplete="off"></label>
+      </form>
+      <div class="mt-2.5 flex flex-wrap items-center gap-2">
+        <button class="btn-primary" id="saveDetails">Save details</button>
+        <button class="btn-outline" id="copyAppt">📋 Copy appointment</button>
+        <span class="hint">Uses the contact picked above. Empty fields are left out.</span>
+      </div>
+    </details>
+
+    <div class="card">
+      <h3 class="card-title">History</h3>
+      <table class="w-full border-collapse [&_td]:border-b [&_td]:border-line [&_td]:px-1.5 [&_td]:py-[7px] [&_td]:text-left [&_td]:align-top [&_td]:text-[13px] [&_td]:wrap-anywhere [&_th]:border-b [&_th]:border-line [&_th]:px-1.5 [&_th]:py-[7px] [&_th]:text-left [&_th]:align-top [&_th]:text-[13px] [&_th]:font-semibold [&_th]:text-mute">
+        <thead><tr><th>When</th><th>Outcome</th><th>Contact</th><th>Log</th></tr></thead>
+        <tbody id="history"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+</div>
+<div id="toast" class="pointer-events-none fixed right-[18px] bottom-[18px] max-w-[520px] rounded-[10px] bg-ink px-3.5 py-2.5 whitespace-pre-wrap text-white opacity-0 shadow-lg transition-opacity"></div>
+
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>

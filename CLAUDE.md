@@ -623,20 +623,20 @@ Gradient boosting vs logistic regression under identical validation. Neural netw
 - **Q6:** Unknown. Ayrton will ask for an API key or list export.
 
 ### Decisions (October 19, 2026)
-- **External app:** Lumen is a local web app (`lumen.py` + `index.html`). It tracks leads itself (SQLite) and syncs to Google Sheets when possible.
+- **External app:** Lumen is a local web app (`lumen/` Python package + `web/` UI). It tracks leads itself (SQLite) and syncs to Google Sheets when possible.
 - **Brands replace markets:** Haneco (Canada), JWL (Chicago), Exceledy (Texas, coming later).
 - **Products:** Solar, Lighting, BESS. Set per lead, multi-select.
 - **Lists:** each lead is either "new" (MyPhoner list) or "follow-up" (Ayrton's follow-up list).
 - **Outcome codes, expanded with a mapping** (supersedes 7.3): VM; RCP = GK; WP; EREQ (requested email) and BUSY (interested, busy) = INT; EMAILED (an action, not a call); NI; BKD; HAS = MyPhoner loser; BAD; DNC.
 - **Contacts:** several per lead, with name and job title. Voicemail streaks are tracked per contact.
 - **Advice:** rule-based next steps in `advice()` (find another contact, go through reception, prefers email, offer times).
-- **Model:** Ayrton wants to learn PyTorch. `model.py` uses PyTorch with `HIDDEN = 0` (logistic regression as a one-layer net), so scores stay explainable on small data. A hidden layer is one constant away. Training teaches from every call (features before the call predict whether it went well) plus Good/Poor labels (3× weight). Holdout is grouped by lead, and the sidebar reports whether the model beats the base rate.
+- **Model:** Ayrton wants to learn PyTorch. `lumen/model.py` uses PyTorch with `HIDDEN = 0` (logistic regression as a one-layer net), so scores stay explainable on small data. A hidden layer is one constant away. Training teaches from every call (features before the call predict whether it went well) plus Good/Poor labels (3× weight). Holdout is grouped by lead, and the sidebar reports whether the model beats the base rate.
 
 ### Decisions (October 20, 2026)
-Built from [PLAN.md](PLAN.md).
+Built from [docs/PLAN.md](docs/PLAN.md).
 - **Lists:** `leads.source` is one of `new` (Leads), `follow-up`, `winner`, `loser`. Only Leads and Follow-ups are open, ranked and due.
 - **Auto-moves:** BKD moves a lead to Winners, and HAS moves it to Losers. BAD and DNC close the lead but stay in their list. Moving back to Leads or Follow-ups clears `closed`.
-- **Migration:** `MIGRATIONS` in `lumen.py` adds new columns to older databases on start without touching existing rows.
+- **Migration:** `MIGRATIONS` in `lumen/db.py` adds new columns to older databases on start without touching existing rows.
 - **Contacts:** added `ext` and `phone_type` (direct / mobile / business). The lead's main phone counts as Business.
 - **Appointment text:** `appointment_text()` builds calendar-invite text and skips empty lines. There is no heading.
 - **Training:** Winners without a manual label count as good examples (3x). Losers add no label.
@@ -680,3 +680,7 @@ Built from [PLAN.md](PLAN.md).
 - **Selective labels / feedback loop:** a model only learns from leads it chose to call, so it never sees whether skipped leads were good.
 - **Leakage:** using information in features that would not be known before the call.
 - **Value × Ease:** priority formula; Value = customer worth, Ease = likelihood of booking.
+
+### Decisions (refactor)
+- Split `lumen.py` into the `lumen/` package (config, db, leads, contacts, activities, advice, features, appointment, sheets, server) and `index.html` into `web/` (css + ES modules). Behavior unchanged. Run with `python -m lumen`; tests are `unittest` in `tests/`.
+- UI is TypeScript (strict) + Tailwind CSS v4, built with Vite into `web/dist`, which Python serves. Tests: `unittest` for Python, Vitest (with a jsdom smoke test) for the UI. Needs Node 20+ to build only; running needs `web/dist`.

@@ -1,4 +1,4 @@
-"""Lumen in its own desktop window. Run: py -3.12 desktop.py   (needs: py -3.12 -m pip install pywebview)
+"""Lumen in its own desktop window. Run: py -3.12 -m lumen.desktop   (needs: py -3.12 -m pip install pywebview)
 
 Starts the same local server on a free port and shows it in a native window (Windows' built-in Edge engine).
 Closing the window stops Lumen. Same data as the browser version: data/lumen.db.
@@ -8,9 +8,9 @@ import threading
 
 import webview
 
-import lumen
+from .server import make_server
 
-server = lumen.make_server(port=0)
+server = make_server(port=0)
 threading.Thread(target=server.serve_forever, daemon=True).start()
 
 webview.create_window("Lumen", f"http://127.0.0.1:{server.server_port}", width=1400, height=900,

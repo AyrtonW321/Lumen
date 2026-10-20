@@ -1,7 +1,7 @@
 """PyTorch lead scorer: predicts the chance the next touch on a lead goes well (interested, email request, booked).
 
 How it works, step by step:
-1. lumen.features() turns each lead into ~20 numbers between 0 and 1 (attempts, voicemail streak, brand, ...).
+1. features.features() turns each lead into ~20 numbers between 0 and 1 (attempts, voicemail streak, brand, ...).
 2. Each past call becomes one training example: features *before* the call -> 1 if the call went well, else 0.
    Your Good/Poor buttons add extra examples with 3x weight.
 3. A PyTorch model learns weights that turn features into a probability.
