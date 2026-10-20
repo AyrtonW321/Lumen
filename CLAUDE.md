@@ -632,6 +632,16 @@ Gradient boosting vs logistic regression under identical validation. Neural netw
 - **Advice:** rule-based next steps in `advice()` (find another contact, go through reception, prefers email, offer times).
 - **Model:** Ayrton wants to learn PyTorch. `model.py` uses PyTorch with `HIDDEN = 0` (logistic regression as a one-layer net), so scores stay explainable on small data. A hidden layer is one constant away. Training teaches from every call (features before the call predict whether it went well) plus Good/Poor labels (3× weight). Holdout is grouped by lead, and the sidebar reports whether the model beats the base rate.
 
+### Decisions (October 20, 2026)
+Built from [PLAN.md](PLAN.md).
+- **Lists:** `leads.source` is one of `new` (Leads), `follow-up`, `winner`, `loser`. Only Leads and Follow-ups are open, ranked and due.
+- **Auto-moves:** BKD moves a lead to Winners, and HAS moves it to Losers. BAD and DNC close the lead but stay in their list. Moving back to Leads or Follow-ups clears `closed`.
+- **Migration:** `MIGRATIONS` in `lumen.py` adds new columns to older databases on start without touching existing rows.
+- **Contacts:** added `ext` and `phone_type` (direct / mobile / business). The lead's main phone counts as Business.
+- **Appointment text:** `appointment_text()` builds calendar-invite text and skips empty lines. There is no heading.
+- **Training:** Winners without a manual label count as good examples (3x). Losers add no label.
+- **No browser autofill** on any input.
+
 ---
 
 ## 10. Constraints and Rules for Claude Code
