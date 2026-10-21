@@ -10,7 +10,7 @@ MODEL_PATH = Path(os.environ.get("LUMEN_MODEL", ROOT / "data" / "model.pt"))
 PORT = int(os.environ.get("LUMEN_PORT", 8765))
 
 BRANDS = {"Haneco": "Canada", "JWL": "Chicago", "Exceledy": "Texas"}
-PRODUCTS = ["Solar", "Lighting", "BESS"]
+PRODUCTS = ["Solar", "Lighting", "BESS", "EV Charging"]
 SOURCES = {"new": "Leads", "follow-up": "Follow-ups", "winner": "Winners", "loser": "Losers"}
 OPEN_SOURCES = ("new", "follow-up")
 PHONE_TYPES = {"direct": "D", "mobile": "M", "business": "B"}
@@ -19,6 +19,9 @@ MEETING_TYPES = ["In-person", "Online", "Phone"]
 # positive: counts as a good result | closes: lead is done | move_to: list the lead moves to
 # PD11 mapping: RCP = GK, BUSY and EREQ = INT, HAS = MyPhoner loser.
 OUTCOMES = {
+    "WIN":     dict(label="Winner", key="", retry=None, positive=True, closes=True, move_to="winner"),
+    "LOST":    dict(label="Loser", key="", retry=None, closes=True, move_to="loser"),
+    "CALLBACK": dict(label="Callback scheduled", key="", retry=1, move_to="follow-up"),
     "OTHER":   dict(label="Other — describe in call log", key="o", retry=1),
     "VM":      dict(label="Voicemail / no answer", key="v", retry=2),
     "RCP":     dict(label="Receptionist", key="r", retry=1, human=True),

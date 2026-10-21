@@ -14,6 +14,7 @@ from .db import connect
 from .features import training_examples
 from .leads import add_lead, lead_detail, list_leads, load_all, update_lead
 from .sheets import sync_to_sheets
+from .settings import caller_name, save_caller_name
 
 # Set explicitly: Windows reads these from the registry, and a wrong .js type stops ES modules loading.
 CONTENT_TYPES = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
@@ -83,7 +84,8 @@ class Handler(BaseHTTPRequestHandler):
         if url.path == "/api/config":
             return self._send(200, {"brands": BRANDS, "products": PRODUCTS, "sources": SOURCES, "outcomes": OUTCOMES,
                                     "phone_types": PHONE_TYPES, "meeting_types": MEETING_TYPES,
-                                    "model": self.scorer.metrics if self.scorer else None})
+                                    "model": self.scorer.metrics if self.scorer else None,
+                                    "caller_name": caller_name(self.conn)})
         if url.path == "/api/leads":
             return self._send(200, list_leads(self.conn, self.scorer))
         if parts[:2] == ["api", "leads"] and len(parts) == 3:
@@ -92,6 +94,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def _post(self, body):
         parts = self.path.strip("/").split("/")
+        if self.path == "/api/settings/caller":
+            save_caller_name(self.conn, body["name"], body.get("revision"))
+            return self._send(200, {"ok": True})
         if self.path == "/api/leads":
             return self._send(201, {"id": add_lead(self.conn, **body)})
         if parts[:2] == ["api", "leads"] and len(parts) == 3:

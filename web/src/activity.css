@@ -1,0 +1,17 @@
+#head { position: relative; padding: 20px 48px 20px 20px; }
+#head > #close { position: absolute; top: 12px; right: 12px; color: var(--color-mute); padding: 6px; }
+#head > #close:hover { background: var(--color-soft); color: var(--color-ink); }
+.lead-facts { margin-top: 12px; padding: 10px 12px; gap: 10px 24px; }
+.activity-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--color-line); margin-bottom: 16px; padding-bottom: 12px; }
+.activity-heading .card-title { border: 0; margin: 0; padding: 0; }
+.move-list { position: relative; }
+.move-list > summary { color: var(--color-mute); font-size: 12px; font-weight: 600; }
+.move-list > label { position: absolute; top: 28px; right: 0; z-index: 10; display: grid; gap: 6px; width: 200px; padding: 12px; background: var(--color-panel); border: 1px solid var(--control-border); border-radius: 8px; box-shadow: 0 8px 20px #0002; }
+.activity-classifications { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.activity-classifications button { display: inline-flex; align-items: center; gap: 6px; }
+.activity-classifications [aria-pressed="true"] { outline: 2px solid var(--color-primary); outline-offset: 2px; background: var(--selection-bg); }
+.activity-classifications #winner[aria-pressed="true"] { outline-color: var(--color-success); }
+.activity-classifications #loser[aria-pressed="true"] { outline-color: var(--color-danger); }
+#classificationHint { margin: 10px 0 16px; line-height: 1.6; }
+#outcomeField[hidden], #callbackFields[hidden] { display: none; }
+@media(max-width:900px) { #head { padding: 16px 44px 16px 16px; } }

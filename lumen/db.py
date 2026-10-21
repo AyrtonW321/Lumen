@@ -5,6 +5,11 @@ from pathlib import Path
 from .config import DB_PATH
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  revision INTEGER NOT NULL DEFAULT 0
+);
 CREATE TABLE IF NOT EXISTS leads (
   id INTEGER PRIMARY KEY,
   name TEXT NOT NULL UNIQUE,

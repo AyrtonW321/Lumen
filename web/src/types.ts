@@ -1,7 +1,7 @@
 // Shapes of the JSON the Python server sends. Keep in sync with lumen/config.py, lumen/leads.py and lumen/db.py.
 
 export type Brand = "Haneco" | "JWL" | "Exceledy";
-export type Product = "Solar" | "Lighting" | "BESS";
+export type Product = "Solar" | "Lighting" | "BESS" | "EV Charging";
 export type Source = "new" | "follow-up" | "winner" | "loser";
 export type Label = "good" | "poor";
 export type PhoneType = "direct" | "mobile" | "business";
@@ -28,6 +28,7 @@ export interface ModelMetrics {
 }
 
 export interface Config {
+  caller_name?: string | null;
   brands: Record<Brand, string>;
   products: Product[];
   sources: Record<Source, string>;

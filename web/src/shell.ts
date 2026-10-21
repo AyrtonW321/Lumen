@@ -1,6 +1,8 @@
 import { icon } from "./icons";
 import { $, store } from "./util";
+import { setupTheme } from "./theme";
 export function setupShell(): void {
+  setupTheme();
   const sidebar = $("sidebar"), toggle = $("collapseSidebar");
   const apply = (collapsed: boolean) => {
     sidebar.classList.toggle("collapsed", collapsed);
@@ -12,6 +14,9 @@ export function setupShell(): void {
   apply(store("lumen.sidebar") === "true");
   toggle.addEventListener("click", () => apply(!sidebar.classList.contains("collapsed")));
   $("filterIcon").innerHTML = icon("filter");
+  $("close").innerHTML = icon("x");
+  $("winner").innerHTML = icon("check") + " Winner";
+  $("loser").innerHTML = icon("x") + " Loser";
   for (const id of ["copyName", "copyAppt"]) {
     const el = $(id); el.innerHTML = icon("copy") + (id === "copyAppt" ? " Copy appointment" : "");
     el.setAttribute("aria-label", id === "copyAppt" ? "Copy appointment" : "Copy company name");

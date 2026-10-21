@@ -6,9 +6,9 @@ from .features import trailing
 def advice(lead, contacts, acts):
     """Plain-language next steps, plus a tier (lower = call sooner) used when no model is trained."""
     if lead["source"] == "winner":
-        return ["Winner: meeting booked"], 99
+        return ["Winner: meeting booked" if lead["closed"] == "BKD" else "Classified as winner; see call history for details"], 99
     if lead["source"] == "loser":
-        return ["Loser: already has a solution"], 99
+        return ["Loser: already has a solution" if lead["closed"] == "HAS" else "Classified as loser; see call history for details"], 99
     if lead["closed"]:
         return [f"Closed: {OUTCOMES[lead['closed']]['label']}"], 99
     tips, tier = [], 5

@@ -1,8 +1,10 @@
+import { bindActivityLog } from "./activity";
+import { bindProducts } from "./products";
+import { bindCaller } from "./caller";
 import { bindContacts } from "./contact-events";
+import { bindCompanyEditor } from "./company-editor";
 import { closeLead, patch, pickOutcome, refresh, reloadDetail, resetForm, save, select } from "./actions";
-import { QUICK, type QuickKind } from "./constants";
-import { quickDate } from "./dates";
-import { renderList, renderPanel, renderPreview, showModel } from "./render";
+import { renderList, renderPanel, showModel } from "./render";
 import { config, currentLead, state } from "./state";
 import type { ModelMetrics, Source, SyncCounts, TabId } from "./types";
 import { $, api, copy, errorMessage, store, toast } from "./util";
@@ -51,7 +53,13 @@ function bindLeadList(): void {
     const first = state.view[0];
     if (e.key === "Enter" && first) { e.preventDefault(); e.stopPropagation(); void select(first.id); $("search").blur(); }
   });
-  $("list").addEventListener("click", e => { const el = closest(e, "[data-id]"); if (el) void select(Number(el.dataset.id)); });
+  $("list").addEventListener("click", e => { if (closest(e, "[data-company-lead]")) return; const el = closest(e, "[data-id]"); if (el) void select(Number(el.dataset.id)); });
+  $("list").addEventListener("keydown", e => {
+    const row = closest(e, "[data-id]");
+    if (row && row === e.target && (e.key === "Enter" || e.key === " ")) {
+      e.preventDefault(); e.stopPropagation(); void select(Number(row.dataset.id));
+    }
+  });
   const form = $<HTMLFormElement>("newLead");
   form.addEventListener("submit", async e => {
     e.preventDefault();
@@ -69,37 +77,17 @@ function bindLeadHeader(): void {
     const c = closest(e, "[data-copy]");
     if (c) { e.stopPropagation(); void copy(c.dataset.copy ?? "", c.dataset.label ?? ""); }
   });
-  $("lProducts").addEventListener("click", e => {
-    const p = closest(e, "[data-p]")?.dataset.p; if (!p) return;
-    const set = new Set(currentLead().products.split(",").filter(Boolean));
-    if (!set.delete(p)) set.add(p);
-    void patch({ products: [...set] });
-  });
+  bindProducts();
   $("lBrand").addEventListener("change", e => void patch({ brand: (e.target as HTMLSelectElement).value }));
   $("lSource").addEventListener("change", e => {
     const source = (e.target as HTMLSelectElement).value as Source;
     void patch({ source }, `Moved to ${config().sources[source]}`);
   });
-  $("winner").addEventListener("click", () => void patch({ source: "winner" }, "Marked as winner"));
-  $("loser").addEventListener("click", () => void patch({ source: "loser" }, "Marked as loser"));
   $("close").addEventListener("click", closeLead);
   $("copyName").addEventListener("click", () => void copy(currentLead().name, "company name"));
   for (const label of ["good", "poor"] as const) {
     $(label).addEventListener("click", () => void patch({ label: currentLead().label === label ? null : label }));
   }
-}
-
-function bindActivityLog(): void {
-  $("outcomes").addEventListener("change", e => { const value = (e.target as HTMLSelectElement).value; state.form.outcome = value || null; if (value) pickOutcome(value); renderPanel(); });
-  $("quick").innerHTML = '<option value="">Quick callback date</option>' + QUICK.map(([k,l]) => `<option value="${k}">${l}</option>`).join("");
-  $("quick").addEventListener("change", e => { const el = e.target as HTMLSelectElement; if (el.value) { $<HTMLInputElement>("callback_date").value = quickDate(el.value as QuickKind); el.value = ""; renderPreview(); } });
-  $("reschedule").addEventListener("click", () => {
-    const d = $<HTMLInputElement>("callback_date").value;
-    if (!d) return toast("Pick a date or a quick button first");
-    void patch({ next_action_date: d }, `Next call set to ${d}`);
-  });
-  for (const id of ["callback_date", "note"]) $(id).addEventListener("input", renderPreview);
-  $("save").addEventListener("click", () => void save());
 }
 
 function bindDetails(): void {
@@ -118,7 +106,7 @@ function bindDetails(): void {
 }
 
 function bindHeader(): void {
-  const train = $<HTMLButtonElement>("train"), sync = $<HTMLButtonElement>("sync"), caller = $<HTMLInputElement>("caller");
+  const train = $<HTMLButtonElement>("train"), sync = $<HTMLButtonElement>("sync");
   train.addEventListener("click", async () => {
     train.disabled = true;
     try { showModel(await api<ModelMetrics>("/api/train", {})); toast("AI trained"); await refresh(); }
@@ -134,11 +122,11 @@ function bindHeader(): void {
     sync.disabled = false;
   });
   $("saveMainPhone").addEventListener("click", () => void patch({ phone: $<HTMLInputElement>("mainPhone").value }, "Main line saved"));
-  caller.value = store("lumen.caller") ?? "";
-  caller.addEventListener("change", () => store("lumen.caller", caller.value));
+  bindCaller();
 }
 
 export function bindEvents(): void {
+  bindCompanyEditor();
   document.addEventListener("keydown", onKeydown);
   bindLeadList(); bindLeadHeader(); bindContacts(); bindActivityLog(); bindDetails(); bindHeader();
 }

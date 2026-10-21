@@ -45,6 +45,14 @@ class ServerTests(unittest.TestCase):
         self.assertIn("text/css", self.get("/assets/app.css")[1])
         self.assertIn("text/javascript", self.get("/assets/app.js")[1])
 
+    def test_caller_setting_is_returned_in_config(self):
+        req = urllib.request.Request(self.base + "/api/settings/caller", method="POST",
+                                     data=json.dumps({"name": "Test Caller", "revision": 1}).encode(),
+                                     headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req) as response:
+            self.assertEqual(response.status, 200)
+        self.assertEqual(json.loads(self.get("/api/config")[2])["caller_name"], "Test Caller")
+
     def test_static_route_blocks_path_traversal(self):
         for path in ("/../secret.txt", "/..%2Fsecret.txt", "/assets/../../secret.txt"):
             with self.subTest(path=path), self.assertRaises(urllib.error.HTTPError) as ctx:

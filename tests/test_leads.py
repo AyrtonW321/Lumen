@@ -26,6 +26,12 @@ class ValidationTests(DbTestCase):
 
 
 class ListTests(DbTestCase):
+    def test_ev_charging_product_can_be_created_and_updated(self):
+        lead = add_lead(self.conn, "EV Test", "Haneco", products=["EV Charging"])
+        self.assertEqual(list_leads(self.conn)[0]["products"], "EV Charging")
+        update_lead(self.conn, lead, products=["EV Charging", "Solar"])
+        self.assertEqual(list_leads(self.conn)[0]["products"], "Solar,EV Charging")
+
     def test_booked_goes_to_winners_and_has_goes_to_losers(self):
         booked = add_lead(self.conn, "Test Booked Co", "Haneco", now=T0)
         log_activity(self.conn, booked, "BKD", now=T0)

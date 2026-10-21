@@ -42,12 +42,13 @@ export async function patch(fields: Record<string, unknown>, msg?: string): Prom
 export async function save(): Promise<void> {
   const { detail, form } = state;
   if (!detail || !form.outcome) return toast("Pick an outcome first");
+  if (form.outcome === "CALLBACK" && !$<HTMLInputElement>("callback_date").value) return toast("Choose a callback date");
   if (form.outcome === "OTHER" && !$<HTMLTextAreaElement>("note").value.trim()) return toast("Describe what happened in the call log");
   const cfg = config();
   try {
     const r = await api<{ myphoner_comment: string }>("/api/activities", {
       lead_id: detail.id, outcome: form.outcome, contact_id: form.contact_id,
-      callback_date: $<HTMLInputElement>("callback_date").value || null,
+      callback_date: ["WIN", "LOST"].includes(form.outcome) ? null : $<HTMLInputElement>("callback_date").value || null,
       note: $<HTMLTextAreaElement>("note").value || null,
       caller: $<HTMLInputElement>("caller").value || null,
     });

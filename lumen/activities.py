@@ -1,5 +1,5 @@
 """Logging a call or email against a lead."""
-from datetime import datetime
+from datetime import date, datetime
 
 from .config import OUTCOMES
 from .timeutil import add_business_days, hour_block, stamp
@@ -16,6 +16,10 @@ def log_activity(conn, lead_id, outcome, contact_id=None, note=None, caller=None
         raise ValueError(f"unknown outcome {outcome!r}")
     if outcome == "OTHER" and not (note or "").strip():
         raise ValueError("describe what happened in the call log for Other")
+    if callback_date:
+        date.fromisoformat(callback_date)
+    if outcome == "CALLBACK" and not callback_date:
+        raise ValueError("choose a callback date")
     lead = conn.execute("SELECT * FROM leads WHERE id = ?", (lead_id,)).fetchone()
     if lead is None:
         raise ValueError("unknown lead")
@@ -44,6 +48,11 @@ def log_activity(conn, lead_id, outcome, contact_id=None, note=None, caller=None
                      (next_action, outcome if rule.get("closes") else None, lead_id))
         if rule.get("move_to"):
             conn.execute("UPDATE leads SET source = ? WHERE id = ?", (rule["move_to"], lead_id))
+        # A new callback explicitly reopens the lead; prior classifications stay in history.
+        if outcome == "CALLBACK" or (callback_date and not rule.get("closes") and lead["source"] in ("winner", "loser")):
+            conn.execute("UPDATE leads SET source = 'follow-up', closed = NULL WHERE id = ?", (lead_id,))
+        elif rule.get("closes"):
+            conn.execute("UPDATE leads SET closed = ? WHERE id = ?", (outcome, lead_id))
         if outcome == "EREQ" and contact_id:
             conn.execute("UPDATE contacts SET prefers_email = 1 WHERE id = ?", (contact_id,))
     return {"id": cur.lastrowid, "myphoner_comment": comment}

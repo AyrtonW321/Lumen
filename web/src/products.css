@@ -1,0 +1,10 @@
+.product-picker > summary { display: grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--control-border); border-radius: 4px; color: var(--color-mute); cursor: pointer; list-style: none; }
+.product-picker > summary::-webkit-details-marker { display: none; }
+.product-picker > summary:hover, .product-picker[open] > summary { background: var(--selection-bg); color: var(--color-primary); border-color: var(--color-primary); }
+.product-picker > summary:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.product-picker fieldset { position: fixed; z-index: 60; width: min(240px, calc(100vw - 16px)); padding: 12px; border: 1px solid var(--control-border); border-radius: 8px; background: var(--color-panel); color: var(--color-ink); box-shadow: 0 8px 24px #0003; }
+.product-picker legend { float: left; width: 100%; font-size: 12px; font-weight: 650; margin-bottom: 8px; }
+.product-picker label { clear: both; display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 4px; font-size: 13px; cursor: pointer; }
+.product-picker label:hover { background: var(--color-soft); }
+.product-picker fieldset:disabled { opacity: .65; }
+.product-picker input { accent-color: var(--color-primary); }
