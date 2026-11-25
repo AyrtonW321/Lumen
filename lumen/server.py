@@ -8,13 +8,16 @@ from urllib.parse import parse_qs, urlsplit
 
 from .activities import log_activity
 from .appointment import appointment_text
-from .config import (BRANDS, MEETING_TYPES, MODEL_PATH, OUTCOMES, PHONE_TYPES, PORT, PRODUCTS, SOURCES, WEB_DIR)
+from .callbacks import callbacks
+from .config import (BRANDS, MEETING_TYPES, MODEL_PATH, OUTCOMES, PHONE_TYPES, PORT, PRODUCTS, SOURCES, WARNING_TRAITS,
+                     WEB_DIR)
 from .contacts import add_contact, update_contact
 from .db import connect
 from .features import training_examples
 from .leads import add_lead, lead_detail, list_leads, load_all, update_lead
 from .sheets import sync_to_sheets
 from .settings import caller_name, save_caller_name
+from .traits import add_trait, catalog, delete_trait, update_trait
 
 # Set explicitly: Windows reads these from the registry, and a wrong .js type stops ES modules loading.
 CONTENT_TYPES = {".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
@@ -85,9 +88,13 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"brands": BRANDS, "products": PRODUCTS, "sources": SOURCES, "outcomes": OUTCOMES,
                                     "phone_types": PHONE_TYPES, "meeting_types": MEETING_TYPES,
                                     "model": self.scorer.metrics if self.scorer else None,
-                                    "caller_name": caller_name(self.conn)})
+                                    "caller_name": caller_name(self.conn), "warning_traits": WARNING_TRAITS})
         if url.path == "/api/leads":
             return self._send(200, list_leads(self.conn, self.scorer))
+        if url.path == "/api/callbacks":
+            return self._send(200, callbacks(self.conn))
+        if url.path == "/api/traits":
+            return self._send(200, catalog(self.conn))
         if parts[:2] == ["api", "leads"] and len(parts) == 3:
             return self._send(200, lead_detail(self.conn, int(parts[2])))
         self._send(404, {"error": "not found"})
@@ -106,6 +113,14 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(201, {"id": add_contact(self.conn, int(parts[2]), **body)})
         if parts[:2] == ["api", "contacts"] and len(parts) == 3:
             update_contact(self.conn, int(parts[2]), **body)
+            return self._send(200, {"ok": True})
+        if self.path == "/api/traits":
+            return self._send(201, {"id": add_trait(self.conn, **body)})
+        if parts[:2] == ["api", "traits"] and parts[3:] == ["delete"]:
+            delete_trait(self.conn, int(parts[2]))
+            return self._send(200, {"ok": True})
+        if parts[:2] == ["api", "traits"] and len(parts) == 3:
+            update_trait(self.conn, int(parts[2]), **body)
             return self._send(200, {"ok": True})
         if self.path == "/api/activities":
             body.pop("now", None)

@@ -4,14 +4,17 @@ import "./workspace.css";
 import "./theme.css";
 import "./activity.css";
 import "./products.css";
+import "./callbacks.css";
+import "./skeleton.css";
 import { setupShell } from "./shell";
 import { refresh } from "./actions";
 import { TABS } from "./constants";
 import { bindEvents } from "./events";
 import { showModel } from "./render";
+import { loadCatalog } from "./traits";
 import { state } from "./state";
 import type { Config } from "./types";
-import { $, api, options, store } from "./util";
+import { $, api, loadError, options, store } from "./util";
 
 function fillSelects(cfg: Config): void {
   const brands = Object.entries(cfg.brands).map(([b, r]) => [b, `${b} (${r})`] as const);
@@ -32,7 +35,10 @@ async function start(): Promise<void> {
   setupShell();
   bindEvents();
   showModel(cfg.model);
+  await loadCatalog();
   await refresh();
+  $("list").removeAttribute("aria-busy");
 }
 
-void start();
+// Startup binds events once, so Retry reloads the page instead of calling start() again.
+start().catch(() => loadError($("list"), "Couldn't load leads. Is Lumen running?", () => location.reload()));

@@ -1,5 +1,5 @@
 """Logging a call or email against a lead."""
-from datetime import date, datetime
+from datetime import date, datetime, time
 
 from .config import OUTCOMES
 from .timeutil import add_business_days, hour_block, stamp
@@ -11,7 +11,8 @@ def myphoner_comment(outcome, now, contact=None, callback_date=None, note=None):
     return " - ".join(p for p in parts if p)
 
 
-def log_activity(conn, lead_id, outcome, contact_id=None, note=None, caller=None, callback_date=None, now=None):
+def log_activity(conn, lead_id, outcome, contact_id=None, note=None, caller=None, callback_date=None, now=None,
+                 callback_time=None, expecting_call=False, called_back=None):
     if outcome not in OUTCOMES:
         raise ValueError(f"unknown outcome {outcome!r}")
     if outcome == "OTHER" and not (note or "").strip():
@@ -20,6 +21,10 @@ def log_activity(conn, lead_id, outcome, contact_id=None, note=None, caller=None
         date.fromisoformat(callback_date)
     if outcome == "CALLBACK" and not callback_date:
         raise ValueError("choose a callback date")
+    if (callback_time or expecting_call) and not callback_date:
+        raise ValueError("a callback time or expected call needs a callback date")
+    if callback_time:
+        callback_time = time.fromisoformat(callback_time).strftime("%H:%M")
     lead = conn.execute("SELECT * FROM leads WHERE id = ?", (lead_id,)).fetchone()
     if lead is None:
         raise ValueError("unknown lead")
@@ -31,7 +36,7 @@ def log_activity(conn, lead_id, outcome, contact_id=None, note=None, caller=None
 
     now = now or datetime.now()
     rule = OUTCOMES[outcome]
-    comment = myphoner_comment(outcome, now, contact, callback_date, note)
+    comment = myphoner_comment(outcome, now, contact, callback_date and " ".join(filter(None, (callback_date, callback_time))), note)
     if callback_date:
         next_action = callback_date
     elif rule["retry"] is None:
@@ -39,13 +44,20 @@ def log_activity(conn, lead_id, outcome, contact_id=None, note=None, caller=None
     else:
         next_action = add_business_days(now.date(), rule["retry"]).isoformat()
 
+    callback_at = "T".join(filter(None, (callback_date, callback_time))) if callback_date else None
+    # Only recorded while a call was expected, so "Doesn't call back" counts real broken promises.
+    called_back = (1 if called_back else 0) if lead["expecting_call"] else None
+
     with conn:
         cur = conn.execute(
             """INSERT INTO activities (lead_id, contact_id, timestamp, weekday, hour_block, outcome, note, caller,
-               myphoner_comment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (lead_id, contact_id, stamp(now), now.strftime("%a"), hour_block(now), outcome, note, caller, comment))
-        conn.execute("UPDATE leads SET next_action_date = ?, closed = COALESCE(closed, ?) WHERE id = ?",
-                     (next_action, outcome if rule.get("closes") else None, lead_id))
+               myphoner_comment, called_back) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (lead_id, contact_id, stamp(now), now.strftime("%a"), hour_block(now), outcome, note, caller, comment,
+             called_back))
+        conn.execute("""UPDATE leads SET next_action_date = ?, closed = COALESCE(closed, ?), callback_at = ?,
+                        expecting_call = ? WHERE id = ?""",
+                     (next_action, outcome if rule.get("closes") else None, callback_at,
+                      int(bool(expecting_call)), lead_id))
         if rule.get("move_to"):
             conn.execute("UPDATE leads SET source = ? WHERE id = ?", (rule["move_to"], lead_id))
         # A new callback explicitly reopens the lead; prior classifications stay in history.

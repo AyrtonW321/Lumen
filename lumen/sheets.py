@@ -15,6 +15,10 @@ def sync_to_sheets(conn):
         "Lumen Activities": """SELECT l.name AS lead, c.name AS contact, c.title, a.* FROM activities a
                                JOIN leads l ON l.id = a.lead_id LEFT JOIN contacts c ON c.id = a.contact_id
                                ORDER BY a.timestamp""",
+        "Lumen Traits": """SELECT l.name AS lead, c.name AS contact, t.name AS trait, t.note,
+                           CASE t.global WHEN 1 THEN 'global' ELSE 'one-off' END AS kind, t.created_at
+                           FROM traits t JOIN leads l ON l.id = t.lead_id LEFT JOIN contacts c ON c.id = t.contact_id
+                           ORDER BY l.name, c.name, t.name""",
     }
     counts = {}
     for title, sql in tabs.items():

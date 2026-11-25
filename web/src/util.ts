@@ -17,6 +17,13 @@ export async function api<T>(path: string, body?: unknown): Promise<T> {
   return json as T;
 }
 
+/** Replaces a loading area with a message and a Retry button. */
+export function loadError(el: HTMLElement, msg: string, retry: () => void): void {
+  el.removeAttribute("aria-busy");
+  el.innerHTML = `<div class="load-error" role="alert"><p>${esc(msg)}</p><button type="button" class="btn-primary">Retry</button></div>`;
+  el.querySelector("button")!.addEventListener("click", retry);
+}
+
 /** Message of anything thrown. */
 export const errorMessage = (e: unknown): string => e instanceof Error ? e.message : String(e);
 

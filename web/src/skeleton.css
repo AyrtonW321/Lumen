@@ -1,0 +1,11 @@
+/* Grey placeholder boxes while leads or a lead's details load. */
+.skel { flex-shrink: 0; background: color-mix(in srgb, var(--color-line) 60%, var(--color-panel)); border-radius: 7px; animation: skel-pulse 1.6s ease-in-out infinite; }
+.skel-row { height: 108px; }
+.skel-panel { display: grid; gap: 16px; }
+.skel-head { height: 96px; }
+.skel-short { height: 56px; }
+.skel-card { height: 150px; }
+.skel-tall { height: 300px; }
+@keyframes skel-pulse { 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) { .skel { animation: none; } }
+.load-error { display: grid; justify-items: center; gap: 12px; margin-top: 48px; padding: 16px; text-align: center; font-weight: 600; color: var(--color-mute); }

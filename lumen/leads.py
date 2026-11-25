@@ -5,6 +5,7 @@ from .advice import advice
 from .config import BRANDS, MEETING_TYPES, OPEN_SOURCES, PRODUCTS, SOURCES
 from .features import features
 from .timeutil import stamp
+from .traits import badges
 
 
 def clean_products(products):
@@ -28,7 +29,7 @@ def add_lead(conn, name, brand, products=(), source="new", list_name=None, phone
 
 def update_lead(conn, lead_id, **fields):
     allowed = {"name", "brand", "products", "source", "list_name", "phone", "label", "next_action_date", "address",
-               "facility_size", "solar_reference", "lighting_reference", "meeting_type", "appt_at"}
+               "facility_size", "solar_reference", "lighting_reference", "meeting_type", "appt_at", "callback_at", "main_contact_id"}
     if set(fields) - allowed:
         raise ValueError(f"cannot update {sorted(set(fields) - allowed)}")
     fields = {k: (v.strip() or None) if isinstance(v, str) else v for k, v in fields.items()}
@@ -42,10 +43,14 @@ def update_lead(conn, lead_id, **fields):
         raise ValueError("unknown meeting type")
     if fields.get("next_action_date"):
         date.fromisoformat(fields["next_action_date"])  # raises ValueError on a bad date
-    if fields.get("appt_at"):
-        datetime.fromisoformat(fields["appt_at"])
+    for key in ("appt_at", "callback_at"):
+        if fields.get(key):
+            datetime.fromisoformat(fields[key])
     if "products" in fields:
         fields["products"] = clean_products(fields["products"] or "")
+    if fields.get("main_contact_id") is not None and not conn.execute(
+            "SELECT 1 FROM contacts WHERE id = ? AND lead_id = ?", (fields["main_contact_id"], lead_id)).fetchone():
+        raise ValueError("main contact must be a contact on this lead")
     if fields.get("source") in OPEN_SOURCES:
         fields["closed"] = None  # moving back to Leads or Follow-ups reopens the lead
     with conn:
@@ -55,12 +60,28 @@ def update_lead(conn, lead_id, **fields):
 
 def load_all(conn):
     """All leads with their contacts and activities (oldest first), keyed by lead id."""
-    leads = {r["id"]: {**dict(r), "contacts": [], "activities": []} for r in conn.execute("SELECT * FROM leads")}
+    leads = {r["id"]: {**dict(r), "contacts": [], "activities": [], "traits": []}
+             for r in conn.execute("SELECT * FROM leads")}
     for r in conn.execute("SELECT * FROM contacts ORDER BY sort_order, id"):
         leads[r["lead_id"]]["contacts"].append(dict(r))
     for r in conn.execute("SELECT * FROM activities ORDER BY timestamp, id"):
         leads[r["lead_id"]]["activities"].append(dict(r))
+    for r in conn.execute("SELECT * FROM traits ORDER BY created_at, id"):
+        leads[r["lead_id"]]["traits"].append(dict(r))
     return leads
+
+
+def main_contact(lead):
+    """Pinned contact, else a decision-maker, else the top contact who is not reception or the wrong person."""
+    contacts = lead["contacts"]
+    if not contacts:
+        return None
+    pinned = next((c for c in contacts if c["id"] == lead.get("main_contact_id")), None)
+    deciders = {t["contact_id"] for t in lead["traits"] if t["contact_id"] and t["name"].lower() == "decision-maker"}
+    pick = (pinned
+            or next((c for c in contacts if c.get("status") == "decision-maker" or c["id"] in deciders), None)
+            or next((c for c in contacts if c.get("status") not in ("wrong-person", "reception")), contacts[0]))
+    return {"id": pick["id"], "name": pick["name"], "title": pick["title"], "pinned": pick is pinned}
 
 
 def is_open(lead):
@@ -77,7 +98,11 @@ def list_leads(conn, scorer=None, today=None):
         acts = lead["activities"]
         rows.append({
             **{k: lead[k] for k in ("id", "name", "brand", "products", "source", "list_name", "label", "closed",
-                                    "next_action_date")},
+                                    "next_action_date", "callback_at", "expecting_call")},
+            "traits": [{"name": t["name"], "note": t["note"], "person": t["contact_id"] is not None}
+                       for t in lead["traits"]],
+            "badges": badges(acts),
+            "main_contact": main_contact(lead),
             "last_outcome": acts[-1]["outcome"] if acts else None,
             "last_contacted": acts[-1]["timestamp"] if acts else None,
             "attempts": len(acts),
@@ -100,5 +125,11 @@ def lead_detail(conn, lead_id):
     lead = load_all(conn).get(lead_id)
     if lead is None:
         raise ValueError("unknown lead")
+    lead["main_contact"] = main_contact(lead)
+    for c in lead["contacts"]:
+        c["traits"] = [t for t in lead["traits"] if t["contact_id"] == c["id"]]
+        c["badges"] = badges([a for a in lead["activities"] if a["contact_id"] == c["id"]])
+    lead["traits"] = [t for t in lead["traits"] if t["contact_id"] is None]
+    lead["badges"] = badges(lead["activities"])
     lead["activities"].reverse()
     return lead

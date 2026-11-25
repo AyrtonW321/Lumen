@@ -32,6 +32,13 @@
     <span class="flex-1"></span>
     <button id="train" class="btn-primary">Train AI</button>
     <button id="sync">Sync to Sheets</button>
+    <div class="callbacks-menu">
+      <button id="callbacksBtn" class="btn-icon callbacks-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="callbacksPanel" aria-label="Callbacks" title="Callbacks"><span id="callbacksBadge" class="callbacks-badge" hidden>0</span></button>
+      <div id="callbacksPanel" class="callbacks-panel" role="dialog" aria-label="Callbacks" hidden>
+        <input id="callbacksSearch" placeholder="Find by company, contact or phone digits" autocomplete="off">
+        <div id="callbacksList"></div>
+      </div>
+    </div>
     <button id="themeToggle" class="theme-toggle btn-icon" type="button" aria-label="Switch to dark mode" aria-pressed="false"></button>
     <label class="flex items-center gap-2 rounded-full bg-white py-1 pr-4 pl-1 shadow-card">
       <span class="grid size-8 place-items-center rounded-full bg-primary/15 text-xs font-extrabold text-primary">You</span>
@@ -48,10 +55,11 @@
         <label>Status<select id="fStatus"><option value="">All statuses</option><option value="new">Leads</option><option value="follow-up">Follow-ups</option><option value="winner">Winners</option><option value="loser">Losers</option><option value="closed">Closed calls</option></select></label>
         <label>Quality<select id="fQuality"><option value="">Any quality</option><option value="good">Good leads</option><option value="poor">Poor leads</option><option value="unrated">Unrated</option></select></label>
         <label><input type="checkbox" id="fDue"> Due now</label>
+        <fieldset><legend>Traits · click once must have, twice must not</legend><div id="fTraits"></div></fieldset>
         <p class="hint">Closed calls include bad numbers and do-not-call outcomes. All statuses includes these records.</p>
         <button id="resetFilters" type="button">Reset filters</button>
       </div></details></div><p class="hint" id="sortNote" hidden></p>
-      <div class="-mx-1 flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-1" id="list"></div>
+      <div class="-mx-1 flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-1" id="list" aria-busy="true"><div class="skel skel-row"></div><div class="skel skel-row"></div><div class="skel skel-row"></div><div class="skel skel-row"></div><div class="skel skel-row"></div><div class="skel skel-row"></div><div class="skel skel-row"></div><div class="skel skel-row"></div></div>
       <details class="border-t border-line pt-3">
         <summary>+ New lead</summary>
         <form id="newLead" class="mt-3 grid gap-2" autocomplete="off">
@@ -69,6 +77,7 @@
     <!-- Lead detail -->
     <main class="min-w-0 overflow-y-auto pr-1">
       <div id="empty" class="mt-24 text-center text-[15px] font-semibold text-mute">Pick a lead on the left.</div>
+      <div id="panelLoad" hidden></div>
       <section id="panel" hidden>
         <div class="card flex flex-wrap items-start justify-between gap-4 border-t-4 border-t-(--brand,var(--color-primary))" id="head">
           <button class="btn-ghost btn-icon" id="close" title="Close lead notes" aria-label="Close lead notes"></button>
@@ -81,6 +90,8 @@
           </div>
           <select id="lBrand" title="Company" aria-label="Company" hidden></select>
         </div>
+
+        <div class="card heads-up" id="headsUp"></div>
 
         <div class="card border-l-[5px] border-l-accent">
           <div class="flex flex-wrap items-center justify-between gap-2">
@@ -99,9 +110,12 @@
           <label class="outcome-label" id="outcomeField">Contact result<select id="outcomes" aria-label="Call result"></select></label>
           <div class="mt-4 flex flex-wrap items-end gap-3" id="callbackFields">
             <label class="grid gap-1 text-xs font-bold text-mute">Callback / next call date<input id="callback_date" type="date" autocomplete="off"></label>
+            <label class="grid gap-1 text-xs font-bold text-mute">Time (optional)<input id="callback_time" type="time" autocomplete="off"></label>
             <select id="quick" aria-label="Quick callback date"></select><button class="btn-outline" id="reschedule" title="Changes the next call date without adding a history entry">Update date without logging a call</button>
           </div>
 
+          <label class="mt-3 flex items-center gap-2 text-[13px]" id="expectingField" hidden><input type="checkbox" id="expecting_call"> Really expecting them to call me (keeps them in Callbacks until the next call)</label>
+          <label class="mt-3 flex items-center gap-2 text-[13px] called-back" id="calledBackField" hidden><input type="checkbox" id="called_back"> They called me back, as promised</label>
           <label class="mt-4 grid gap-1 text-xs font-bold text-mute">Call log (what happened)<textarea id="note" autocomplete="off" placeholder="e.g. Reception said manager in Thursdays, prefers email"></textarea></label>
           <div id="preview" class="my-3 min-h-9 rounded-xl border border-dashed border-line bg-soft px-3 py-2 font-mono text-[13px] wrap-anywhere"></div>
           <button class="btn-primary px-5 py-2.5 text-[15px]" id="save">Save call (Enter)</button>

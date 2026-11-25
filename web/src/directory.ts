@@ -1,6 +1,7 @@
 import { TABS } from "./constants";
 import { productChip, tabClass } from "./format";
 import { companyTag } from "./company-editor";
+import { compactChips, matchesTraits, traitText } from "./traits";
 import { config, state } from "./state";
 import type { LeadRow, Product } from "./types";
 import { $, esc } from "./util";
@@ -31,7 +32,8 @@ export function renderList(): void {
   const fb = $<HTMLSelectElement>("fBrand").value;
   const products = [...$("fProduct").querySelectorAll<HTMLInputElement>("input:checked")].map(i => i.value);
   const status = $<HTMLSelectElement>("fStatus").value, quality = $<HTMLSelectElement>("fQuality").value;
-  state.view = leads.filter(l => (tab === "all" || l.source === tab) && l.name.toLowerCase().includes(q)
+  state.view = leads.filter(l => (tab === "all" || l.source === tab) && (l.name.toLowerCase().includes(q) || traitText(l).includes(q) || !!l.main_contact?.name.toLowerCase().includes(q))
+    && matchesTraits(l)
     && (!fb || l.brand === fb) && (!products.length || products.some(p => l.products.split(",").includes(p)))
     && (!status || (status === "closed" ? !!l.closed : l.source === status))
     && (!quality || (quality === "unrated" ? !l.label : l.label === quality))
@@ -40,7 +42,8 @@ export function renderList(): void {
   $("sortNote").textContent = "Open leads ranked by predicted call success";
   $("list").innerHTML = state.view.map(l => `<article tabindex="0" class="lead-row ${sel === l.id ? 'selected' : ''}" data-id="${l.id}" aria-label="${esc(l.name)}" ${sel === l.id ? 'aria-current="true"' : ''}>
     <div class="lead-heading"><div class="lead-identity"><div class="lead-title">${esc(l.name)}</div><div class="lead-tags">${companyTag(l.brand, l.id)} ${solutionTags(l.products)}</div></div><span class="status status-${l.source}">${esc(cfg.sources[l.source])}</span></div>
-    <div class="lead-classification">${l.list_name ? `<span class="list-origin">List: ${esc(l.list_name)}</span>` : ""}${l.label ? `<span class="quality quality-${l.label}">${l.label === "good" ? "Good lead" : "Poor lead"}</span>` : ""}${l.closed ? `<span class="hint">Closed · ${esc(cfg.outcomes[l.closed]?.label ?? l.closed)}</span>` : ""}</div>
+    <div class="lead-classification">${l.list_name ? `<span class="list-origin">List: ${esc(l.list_name)}</span>` : ""}${l.label ? `<span class="quality quality-${l.label}">${l.label === "good" ? "Good lead" : "Poor lead"}</span>` : ""}${l.closed ? `<span class="hint">Closed · ${esc(cfg.outcomes[l.closed]?.label ?? l.closed)}</span>` : ""}${compactChips(l.traits, l.badges)}</div>
+    ${l.main_contact ? `<div class="lead-contact">${esc(l.main_contact.name)}${l.main_contact.title ? ` <span>· ${esc(l.main_contact.title)}</span>` : ""}</div>` : ""}
     <div class="last-contacted">Last contacted: ${l.last_contacted ? esc(l.last_contacted.replace("T", " ").slice(0,16)) : "Never"}</div>
     <div class="last-result"><strong>${l.last_outcome ? esc(cfg.outcomes[l.last_outcome]?.label ?? l.last_outcome) : "No calls recorded"}</strong>${l.next_action_date && l.open ? `<span>Next call · ${esc(l.next_action_date)}</span>` : ""}</div>
   </article>`).join("") || '<p class="hint">No leads match these filters.</p>';

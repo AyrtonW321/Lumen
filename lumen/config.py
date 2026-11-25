@@ -39,3 +39,12 @@ DECISION_TITLES = re.compile(r"owner|president|ceo|manager|director|facilit|oper
 CONTACT_VM_LIMIT = 3   # same person, voicemail N times in a row -> find another contact
 LEAD_VM_LIMIT = 4      # whole lead, voicemail N times in a row -> new number / go through reception
 HOUR_BLOCKS = [(0, "before 9"), (9, "9-11"), (11, "11-13"), (13, "13-15"), (15, "15+")]
+
+# Traits: presets always appear in the picker and filter. Custom traits join them once saved for reuse.
+PERSON_TRAITS = ["Nice", "Rude", "Gatekeeper-friendly", "Decision-maker", "Prefers email", "Has concerns"]
+COMPANY_TRAITS = ["Has concerns", "Construction/renovation underway", "Budget-tight", "Multi-site", "Owns building"]
+WARNING_TRAITS = ["Has concerns", "Rude", "Doesn't call back", "Hard to reach"]  # shown first on compact chips
+RESPONSIVE_WINDOW = 5      # look at the latest N calls
+RESPONSIVE_MIN_CALLS = 3   # need at least this many calls to judge
+BROKEN_PROMISE_LIMIT = 2   # said they'd call, didn't, N times -> "Doesn't call back"
+UPCOMING_DAYS = 7          # callbacks dropdown looks this far ahead

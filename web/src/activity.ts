@@ -16,6 +16,8 @@ export function renderActivity(): void {
   $("outcomeField").hidden = isClassification(outcome);
   const closed = outcome === "WIN" || outcome === "LOST";
   $("callbackFields").hidden = closed;
+  $("expectingField").hidden = outcome !== "CALLBACK";
+  $("calledBackField").hidden = !state.detail?.expecting_call;
   $("classificationHint").textContent = closed
     ? `Save call to record this ${outcome === "WIN" ? "winner" : "loser"} classification with your note. No contact result is needed.`
     : outcome === "CALLBACK" ? "Save call to schedule a callback and move this lead to Follow-ups, including previously won or lost leads."
@@ -44,9 +46,11 @@ export function bindActivityLog(): void {
   $("reschedule").addEventListener("click", () => {
     const date = $<HTMLInputElement>("callback_date").value;
     if (!date) return toast("Pick a callback date first");
-    const lead = currentLead();
-    void patch({ next_action_date: date, ...(["winner", "loser"].includes(lead.source) ? {source:"follow-up"} : {}) }, `Next call set to ${date}`);
+    const lead = currentLead(), time = $<HTMLInputElement>("callback_time").value;
+    // A rescheduled callback keeps its place in the Callbacks dropdown.
+    const callback = lead.callback_at ? { callback_at: time ? `${date}T${time}` : date } : {};
+    void patch({ next_action_date: date, ...callback, ...(["winner", "loser"].includes(lead.source) ? {source:"follow-up"} : {}) }, `Next call set to ${date}`);
   });
-  for (const id of ["callback_date", "note"]) $(id).addEventListener("input", renderPreview);
+  for (const id of ["callback_date", "callback_time", "note"]) $(id).addEventListener("input", renderPreview);
   $("save").addEventListener("click", () => void save());
 }

@@ -1,0 +1,50 @@
+/* Callbacks dropdown, trait chips, trait picker and trait filter. Colours come from theme.css, so dark mode follows. */
+.callbacks-menu { position: relative; }
+.callbacks-btn { position: relative; }
+.callbacks-badge { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--color-danger); color: var(--color-panel); font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
+.callbacks-panel { position: absolute; right: 0; top: 44px; z-index: 30; width: 400px; max-width: calc(100vw - 32px); max-height: min(70vh, 640px); overflow-y: auto; display: grid; gap: 10px; align-content: start; padding: 12px; background: var(--color-panel); border: 1px solid var(--control-border); border-radius: 6px; box-shadow: 0 8px 24px #182b4630; }
+#callbacksSearch { width: 100%; }
+.callback-section { display: grid; gap: 6px; }
+.callback-section h4 { margin: 4px 0 0; font-size: 12px; font-weight: 700; color: var(--color-mute); display: flex; gap: 6px; align-items: center; }
+.callback-section h4 b { font-size: 11px; padding: 0 6px; border-radius: 9px; background: var(--color-soft); }
+.callback-expecting h4, .callback-overdue h4 { color: var(--color-danger); }
+.callback-row { display: grid; gap: 4px; width: 100%; text-align: left; font-weight: 400; padding: 9px 10px; border: 1px solid var(--color-line); background: var(--color-panel); }
+.callback-row:hover { background: var(--color-soft); }
+.callback-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.callback-when { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--color-mute); }
+.callback-late { border-color: var(--color-danger); }
+.callback-late .callback-when { color: var(--color-danger); }
+.callback-who { font-size: 12px; overflow-wrap: anywhere; }
+.callback-note { font-size: 12px; color: var(--color-mute); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; }
+.callback-chips:empty { display: none; }
+.callback-chips, .contact-traits, .heads-up-row, .trait-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.callback-empty { margin: 4px; }
+
+.trait-chip { font-size: 11px; border: 1px solid transparent; }
+button.trait-chip { cursor: pointer; }
+.trait-warn { --c: var(--color-danger); }
+.trait-auto { border-style: dashed; border-color: currentColor; background: transparent; }
+.trait-note { font-weight: 400; }
+.more-traits { font-size: 11px; }
+.trait-add { font-size: 12px; padding: 2px 8px; }
+.contact-traits { flex-basis: 100%; padding: 0 6px 4px; }
+.contact-row { flex-wrap: wrap; }
+
+.heads-up { padding: 12px 16px; }
+.heads-up-row strong { font-size: 13px; margin-right: 4px; }
+.heads-up-notes { margin: 8px 0 0; padding-left: 18px; font-size: 13px; color: var(--color-danger); }
+
+.trait-editor { position: fixed; z-index: 40; width: 340px; max-width: calc(100vw - 16px); padding: 14px; background: var(--color-panel); border: 1px solid var(--control-border); border-radius: 6px; box-shadow: 0 8px 24px #182b4630; }
+.trait-form { display: grid; gap: 10px; }
+.trait-form h4 { margin: 0; font-size: 14px; }
+.trait-form > label { display: grid; gap: 4px; font-size: 12px; font-weight: 600; }
+.trait-form > label.trait-save { display: flex; align-items: center; gap: 6px; font-weight: 400; }
+.trait-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.filter-fields { max-height: calc(100vh - 200px); overflow-y: auto; }
+#fTraits { display: grid; gap: 8px; padding-top: 6px; }
+.trait-group > span { font-size: 11px; font-weight: 700; color: var(--color-mute); }
+.trait-group > div { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.trait-toggle { font-size: 11px; padding: 2px 7px; border: 1px solid var(--control-border); background: var(--color-panel); }
+.trait-toggle[data-mode="in"] { background: var(--selection-bg); border-color: var(--color-primary); color: var(--color-primary); }
+.trait-toggle[data-mode="out"] { border-color: var(--color-danger); color: var(--color-danger); text-decoration: line-through; }

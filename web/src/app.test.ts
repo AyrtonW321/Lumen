@@ -24,13 +24,21 @@ const row: LeadRow = {
 };
 const detail: LeadDetail = {
   ...row, phone: null, created_at: "2026-10-19T09:00:00", address: null, facility_size: null, solar_reference: null,
-  lighting_reference: null, meeting_type: null, appt_at: null,
+  lighting_reference: null, meeting_type: null, appt_at: null, traits: [], badges: [],
   contacts: [{ id: 5, lead_id: 1, name: "Amy Test", title: "Owner", phone: null, email: null, ext: null, phone_type: null, prefers_email: 0, created_at: "2026-10-19T09:00:00" }],
   activities: [],
 };
 
 it("loads leads, shows one, and selects it on click", async () => {
-  const routes: Record<string, unknown> = { "/api/config": config, "/api/leads": [row], "/api/leads/1": detail };
+  const callbackRows = [
+    { id: 1, name: "Test Co", brand: "Haneco", section: "today", callback_at: "2026-10-21T14:00", late: true,
+      contact: { name: "Amy Test", title: "Owner" }, phone: "555-010-0199", ext: "12", last_note: "Call after lunch",
+      traits: [{ name: "Nice", note: null, person: true }], badges: [] },
+    { id: 2, name: "Later Co", brand: "JWL", section: "upcoming", callback_at: "2026-10-25", late: false,
+      contact: null, phone: null, ext: null, last_note: null, traits: [], badges: [] },
+  ];
+  const routes: Record<string, unknown> = { "/api/config": {...config, warning_traits: ["Has concerns", "Rude"]}, "/api/leads": [row], "/api/leads/1": detail,
+    "/api/traits": { person: ["Nice", "Rude"], company: ["Budget-tight"] }, "/api/callbacks": callbackRows };
   const fetchMock = vi.fn(async (path: string, init?: RequestInit) => {
     if (path === "/api/leads/1" && init?.body) {
       const body = JSON.parse(String(init.body));
@@ -143,4 +151,98 @@ it("loads leads, shows one, and selects it on click", async () => {
   document.querySelector<HTMLInputElement>('[data-product="EV Charging"]')!.click();
   await vi.waitFor(() => expect(document.querySelectorAll("#lProducts > .chip")).toHaveLength(1));
   expect(document.querySelectorAll("#lProducts > .chip")).toHaveLength(1);
+
+  // Callbacks dropdown: badge counts urgent rows only, search finds phone digits, click opens the lead.
+  expect(document.getElementById("callbacksBadge")!.textContent).toBe("1");
+  document.getElementById("callbacksBtn")!.click();
+  expect(document.getElementById("callbacksPanel")!.hidden).toBe(false);
+  await vi.waitFor(() => expect(document.querySelectorAll("#callbacksList [data-callback]")).toHaveLength(2));
+  expect(document.querySelector(".callback-today")!.textContent).toContain("ext 12");
+  expect(document.querySelector(".callback-late")).not.toBeNull();
+  const cbSearch = document.getElementById("callbacksSearch") as HTMLInputElement;
+  cbSearch.value = "0100199"; cbSearch.dispatchEvent(new Event("input", { bubbles: true }));
+  expect(document.querySelectorAll("#callbacksList [data-callback]")).toHaveLength(1);
+  (document.querySelector("#callbacksList [data-callback]") as HTMLElement).click();
+  expect(document.getElementById("callbacksPanel")!.hidden).toBe(true);
+
+  // Trait filter: once = must have, twice = must not have; search also reads trait notes.
+  state.tab = "all";
+  state.leads = [{ ...row, traits: [{ name: "Nice", note: "loves hockey", person: true }], main_contact: { id: 5, name: "Amy Test", title: "Owner", pinned: false } },
+                 { ...row, id: 2, name: "Plain Co", traits: [] }];
+  renderList();
+  expect(document.querySelector("#list .trait-chip")!.textContent).toBe("Nice");
+  expect(document.querySelector("#list .lead-contact")!.textContent).toBe("Amy Test · Owner");
+  const nice = () => document.querySelector<HTMLElement>('[data-trait-filter="person:Nice"]')!;
+  nice().click();
+  expect(document.getElementById("list")!.textContent).not.toContain("Plain Co");
+  nice().click();
+  expect(document.querySelectorAll("#list [data-id]")).toHaveLength(1);
+  expect(document.getElementById("list")!.textContent).toContain("Plain Co");
+  nice().click();
+  const search = document.getElementById("search") as HTMLInputElement;
+  search.value = "hockey"; search.dispatchEvent(new Event("input", { bubbles: true }));
+  expect(document.querySelectorAll("#list [data-id]")).toHaveLength(1);
+  search.value = ""; search.dispatchEvent(new Event("input", { bubbles: true }));
+
+  // Pin button posts the contact as main contact.
+  (document.querySelector('#contacts [data-main="5"]') as HTMLElement).click();
+  await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/leads/1", expect.objectContaining({ body: JSON.stringify({ main_contact_id: 5 }) })));
+
+  // Callback outcome shows the "expecting their call" checkbox.
+  document.getElementById("callback")!.click();
+  expect(document.getElementById("expectingField")!.hidden).toBe(false);
+  document.getElementById("regularCall")!.click();
+  expect(document.getElementById("expectingField")!.hidden).toBe(true);
+  expect(document.querySelector("#headsUp [data-trait-add]")).not.toBeNull();
+
+  // Trait picker: preset fills the name, a known name disables "save for reuse", submit posts the trait.
+  (document.querySelector('#contacts [data-trait-add="5"]') as HTMLElement).click();
+  const traitEditor = document.getElementById("traitEditor")!;
+  expect(traitEditor.hidden).toBe(false);
+  (traitEditor.querySelector('[data-trait-pick="Rude"]') as HTMLElement).click();
+  expect((traitEditor.querySelector("[name=name]") as HTMLInputElement).value).toBe("Rude");
+  expect((traitEditor.querySelector("[name=save]") as HTMLInputElement).disabled).toBe(true);
+  (traitEditor.querySelector("[name=note]") as HTMLInputElement).value = "Short on the phone";
+  traitEditor.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  await vi.waitFor(() => expect(traitEditor.hidden).toBe(true));
+  expect(fetchMock).toHaveBeenCalledWith("/api/traits", expect.objectContaining({
+    body: JSON.stringify({ lead_id: 1, contact_id: 5, name: "Rude", note: "Short on the phone", save: false }) }));
+});
+
+function loadPage(): void {
+  const html = readFileSync(resolve(__dirname, "../index.html"), "utf8");
+  document.body.innerHTML = /<body[^>]*>([\s\S]*)<\/body>/.exec(html)![1]!.replace(/<script[\s\S]*?<\/script>/, "");
+}
+
+it("shows list skeletons at start and Retry when leads cannot load", async () => {
+  vi.resetModules();
+  loadPage();
+  expect(document.querySelectorAll("#list .skel")).toHaveLength(8);
+  vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("Failed to fetch"); }));
+  await import("./main");
+  await vi.waitFor(() => expect(document.querySelector("#list .load-error")).not.toBeNull());
+  expect(document.querySelectorAll("#list .skel")).toHaveLength(0);
+  expect(document.getElementById("list")!.textContent).toContain("Is Lumen running?");
+  expect(document.querySelector("#list .load-error button")!.textContent).toBe("Retry");
+});
+
+it("shows a panel skeleton for a slow lead, then Retry when it fails", async () => {
+  vi.resetModules();
+  loadPage();
+  let fail!: (e: Error) => void;
+  const routes: Record<string, unknown> = { "/api/config": config, "/api/leads": [{ ...row, source: "new" }],
+    "/api/traits": { person: [], company: [] }, "/api/callbacks": [] };
+  vi.stubGlobal("fetch", vi.fn(async (path: string) => path === "/api/leads/1"
+    ? new Promise((_, reject) => { fail = reject; })
+    : { ok: true, json: async () => routes[path] }));
+  await import("./main");
+  await vi.waitFor(() => expect(document.querySelectorAll("#list [data-id]")).toHaveLength(1));
+  expect(document.getElementById("list")!.hasAttribute("aria-busy")).toBe(false);
+  (document.querySelector("#list [data-id]") as HTMLElement).click();
+  expect(document.getElementById("panelLoad")!.hidden).toBe(true);
+  await vi.waitFor(() => expect(document.querySelectorAll("#panelLoad .skel").length).toBeGreaterThan(0));
+  expect(document.getElementById("empty")!.hidden).toBe(true);
+  fail(new TypeError("Failed to fetch"));
+  await vi.waitFor(() => expect(document.querySelector("#panelLoad .load-error button")).not.toBeNull());
+  expect(document.getElementById("panel")!.hidden).toBe(true);
 });

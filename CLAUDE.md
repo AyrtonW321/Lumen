@@ -684,3 +684,13 @@ Built from [docs/PLAN.md](docs/PLAN.md).
 ### Decisions (refactor)
 - Split `lumen.py` into the `lumen/` package (config, db, leads, contacts, activities, advice, features, appointment, sheets, server) and `index.html` into `web/` (css + ES modules). Behavior unchanged. Run with `python -m lumen`; tests are `unittest` in `tests/`.
 - UI is TypeScript (strict) + Tailwind CSS v4, built with Vite into `web/dist`, which Python serves. Tests: `unittest` for Python, Vitest (with a jsdom smoke test) for the UI. Needs Node 20+ to build only; running needs `web/dist`.
+
+### Decisions (November 24, 2026)
+- **Callbacks dropdown:** bell in the top bar. Lists leads with `leads.callback_at` (set only when a call is logged with a callback date, optional `HH:MM`) or `expecting_call` = 1. Sections: Expecting call, Overdue, Today, Upcoming (7 days). Badge counts the first three. Retry dates from outcome rules are not callbacks. Logging the next call clears both fields.
+- **Expecting their call:** checkbox on the Callback outcome. While set, the next logged call records `activities.called_back` (1/0). Two or more 0s give the "Doesn't call back" badge.
+- **Traits:** `traits` table, on a contact (`contact_id`) or the company (`contact_id` NULL), with optional note. Presets in `lumen/config.py`; custom traits are one-off unless saved for reuse (`global` = 1). Typing a known name reuses its spelling.
+- **Automatic badges** (`lumen/traits.py` `badges()`): Responsive, Hard to reach, Doesn't call back. Calculated, not stored, not synced.
+- **Traits are not model features** yet: they are added after calls and would leak. `created_at` is stored so they can be used point-in-time later.
+- **Sheets:** new "Lumen Traits" tab.
+- **Skeleton UI:** grey pulsing boxes (`web/src/skeleton.css`). List skeleton is in `index.html` so it shows on the first frame; lead panel skeleton appears only after 150 ms. Load failures show a message with Retry (startup Retry reloads the page). Pulse stops under reduced motion.
+- **Main contact:** `leads.main_contact_id` pins one (pin button on a contact card; click again to unpin). Otherwise `main_contact()` picks a decision-maker (status or trait), else the top contact that is not reception or wrong person. Shown under the company in the lead directory and searchable.

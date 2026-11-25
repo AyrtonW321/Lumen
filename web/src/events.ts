@@ -3,6 +3,8 @@ import { bindProducts } from "./products";
 import { bindCaller } from "./caller";
 import { bindContacts } from "./contact-events";
 import { bindCompanyEditor } from "./company-editor";
+import { bindCallbacks } from "./callbacks";
+import { bindTraits, renderTraitFilter } from "./traits";
 import { closeLead, patch, pickOutcome, refresh, reloadDetail, resetForm, save, select } from "./actions";
 import { renderList, renderPanel, showModel } from "./render";
 import { config, currentLead, state } from "./state";
@@ -43,7 +45,7 @@ function bindLeadList(): void {
   $("resetFilters").addEventListener("click", () => {
     for (const id of ["fBrand", "fStatus", "fQuality"]) $<HTMLSelectElement>(id).value = "";
     $("fProduct").querySelectorAll<HTMLInputElement>("input").forEach(i => i.checked = false);
-    $<HTMLInputElement>("fDue").checked = false; renderList();
+    $<HTMLInputElement>("fDue").checked = false; state.traitFilter.clear(); renderTraitFilter(); renderList();
   });
   $("tabs").addEventListener("click", e => {
     const b = closest(e, "[data-tab]");
@@ -128,7 +130,7 @@ function bindHeader(): void {
 export function bindEvents(): void {
   bindCompanyEditor();
   document.addEventListener("keydown", onKeydown);
-  bindLeadList(); bindLeadHeader(); bindContacts(); bindActivityLog(); bindDetails(); bindHeader();
+  bindLeadList(); bindLeadHeader(); bindContacts(); bindActivityLog(); bindDetails(); bindHeader(); bindTraits(); bindCallbacks();
 }
 
 async function saveAppointmentFields(form: HTMLFormElement): Promise<void> {

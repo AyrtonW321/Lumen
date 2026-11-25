@@ -1,4 +1,4 @@
-import { reloadDetail, resetContactForm } from "./actions";
+import { patch, reloadDetail, resetContactForm } from "./actions";
 import { renderPanel } from "./render";
 import { currentLead, state } from "./state";
 import { $, api, errorMessage, field, toast } from "./util";
@@ -6,6 +6,8 @@ const closest = (e: Event, selector: string): HTMLElement | null => (e.target as
 export function bindContacts(): void {
   $("contacts").addEventListener("click", e => {
     if (closest(e, "[data-copy]")) return;
+    const main = closest(e, "[data-main]");
+    if (main) { const id = Number(main.dataset.main); void patch({ main_contact_id: currentLead().main_contact?.pinned && currentLead().main_contact?.id === id ? null : id }, "Main contact updated"); return; }
     const move = closest(e, "[data-move]");
     if (move) { void moveContact(Number(move.dataset.move), Number(move.dataset.direction)); return; }
     const ed = closest(e, "[data-edit]");

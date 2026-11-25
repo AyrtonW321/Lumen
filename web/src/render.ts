@@ -5,6 +5,7 @@ import { BRAND_VAR } from "./constants";
 import { phoneText, pill } from "./format";
 import { companyTag } from "./company-editor";
 import { renderProducts } from "./products";
+import { contactChips, renderHeadsUp } from "./traits";
 import { config, currentLead, state } from "./state";
 import type { ModelMetrics } from "./types";
 import { $, esc, field } from "./util";
@@ -21,18 +22,21 @@ export function renderPanel(): void {
   const sourceColor = detail.source === "winner" ? "--color-success" : detail.source === "loser" ? "--color-danger" : "--color-primary";
   $("lMeta").innerHTML = `<div class="detail-identity"><span>${esc(cfg.brands[detail.brand])}</span><span class="chip" style="--c:var(${sourceColor})">${cfg.sources[detail.source]}</span></div>
     <dl class="lead-facts"><div><dt>Last contacted</dt><dd>${esc(detail.activities[0]?.timestamp.replace("T", " ").slice(0, 16) ?? "Never")}</dd></div><div><dt>Next call</dt><dd>${esc(detail.next_action_date ?? "Not scheduled")}</dd></div><div><dt>Calls logged</dt><dd>${detail.activities.length}</dd></div>
+    ${detail.callback_at || detail.expecting_call ? `<div><dt>Callback</dt><dd>${esc((detail.callback_at ?? "").replace("T", " "))}${detail.expecting_call ? " · expecting their call" : ""}</dd></div>` : ""}
     ${detail.phone ? `<div><dt>Main line</dt><dd>${esc(detail.phone)} <button class="btn-ghost btn-icon" data-copy="${esc(detail.phone)}" data-label="phone" aria-label="Copy main phone">${icon("copy")}</button></dd></div>` : ""}
     ${detail.list_name ? `<div><dt>List</dt><dd>${esc(detail.list_name)}</dd></div>` : ""}</dl>`;
   $<HTMLSelectElement>("lBrand").value = detail.brand; $<HTMLSelectElement>("lSource").value = detail.source;
   renderProducts();
+  renderHeadsUp();
   $("good").classList.toggle("on", detail.label === "good"); $("poor").classList.toggle("on", detail.label === "poor");
   $("lScore").innerHTML = row?.score != null ? `${pill(row.score)} <span class="hint">chance the next touch goes well${row.why?.length ? " · " + row.why.map(esc).join(", ") : ""}</span>` : "";
   $("lAdvice").innerHTML = (row?.advice ?? []).map(a => `<li>${esc(a)}</li>`).join("") || "<li>No advice yet</li>";
   $("mainPhone").setAttribute("placeholder", detail.phone || "Company phone number");
   if (document.activeElement?.id !== "mainPhone") $<HTMLInputElement>("mainPhone").value = detail.phone ?? "";
   $("contacts").innerHTML = detail.contacts.map((c, i) => `<div class="contact-row ${form.contact_id === c.id ? "contact-selected" : ""}">
-    <button type="button" class="contact-pick" data-c="${c.id}" aria-pressed="${form.contact_id === c.id}"><span class="contact-identity"><strong>${esc(c.name)}</strong><span class="contact-title">${esc(c.title || "No position added")}</span></span><span class="contact-reach"><span class="contact-phone">${esc(phoneText(c)) || "No phone added"}</span><span class="contact-status" data-status="${esc(c.status ?? "")}">${esc(c.status?.replaceAll("-", " ") || "Unclassified")}</span></span></button>
-    <div class="contact-actions">${c.phone ? `<button class="btn-icon" data-copy="${esc(c.phone)}" data-label="phone" aria-label="Copy phone">${icon("copy")}</button>` : ""}<button class="btn-icon" data-edit="${c.id}" aria-label="Edit ${esc(c.name)}">${icon("edit")}</button><button class="btn-icon" data-move="${c.id}" data-direction="-1" aria-label="Move ${esc(c.name)} up" ${i === 0 ? "disabled" : ""}>${icon("up")}</button><button class="btn-icon" data-move="${c.id}" data-direction="1" aria-label="Move ${esc(c.name)} down" ${i === detail.contacts.length - 1 ? "disabled" : ""}>${icon("down")}</button></div></div>`).join("")
+    <button type="button" class="contact-pick" data-c="${c.id}" aria-pressed="${form.contact_id === c.id}"><span class="contact-identity"><strong>${esc(c.name)}${detail.main_contact?.id === c.id ? ` <span class="chip main-chip" title="${detail.main_contact.pinned ? "Pinned as main contact" : "Picked automatically"}">Main${detail.main_contact.pinned ? "" : " · auto"}</span>` : ""}</strong><span class="contact-title">${esc(c.title || "No position added")}</span></span><span class="contact-reach"><span class="contact-phone">${esc(phoneText(c)) || "No phone added"}</span><span class="contact-status" data-status="${esc(c.status ?? "")}">${esc(c.status?.replaceAll("-", " ") || "Unclassified")}</span></span></button>
+    <div class="contact-traits">${contactChips(c.traits, c.badges)}<button type="button" class="btn-ghost trait-add" data-trait-add="${c.id}" aria-label="Add trait for ${esc(c.name)}">+ trait</button></div>
+    <div class="contact-actions"><button class="btn-icon${detail.main_contact?.pinned && detail.main_contact.id === c.id ? " on" : ""}" data-main="${c.id}" aria-pressed="${!!detail.main_contact?.pinned && detail.main_contact.id === c.id}" aria-label="Pin ${esc(c.name)} as main contact" title="Pin as main contact">${icon("pin")}</button>${c.phone ? `<button class="btn-icon" data-copy="${esc(c.phone)}" data-label="phone" aria-label="Copy phone">${icon("copy")}</button>` : ""}<button class="btn-icon" data-edit="${c.id}" aria-label="Edit ${esc(c.name)}">${icon("edit")}</button><button class="btn-icon" data-move="${c.id}" data-direction="-1" aria-label="Move ${esc(c.name)} up" ${i === 0 ? "disabled" : ""}>${icon("up")}</button><button class="btn-icon" data-move="${c.id}" data-direction="1" aria-label="Move ${esc(c.name)} down" ${i === detail.contacts.length - 1 ? "disabled" : ""}>${icon("down")}</button></div></div>`).join("")
     + `<button type="button" class="mainline ${form.contact_id == null ? "on" : ""}" data-c="">Use main line ${esc(detail.phone ?? "— add a default number below")}</button>`;
   $("outcomes").innerHTML = `<option value="">Select a call result</option>` + Object.entries(cfg.outcomes).filter(([code]) => !isClassification(code)).map(([code,o]) => `<option value="${code}" ${form.outcome === code ? "selected" : ""}>${esc(o.label)}</option>`).join("");
   renderActivity();
@@ -55,7 +59,8 @@ function preview(): string {
   const { form, detail } = state;
   if (!form.outcome || !detail) return "";
   const c = detail.contacts.find(c => c.id === form.contact_id);
-  const who = c && (c.title ? `${c.name} (${c.title})` : c.name), cb = ["WIN", "LOST"].includes(form.outcome) ? "" : $<HTMLInputElement>("callback_date").value;
+  const who = c && (c.title ? `${c.name} (${c.title})` : c.name), date = ["WIN", "LOST"].includes(form.outcome) ? "" : $<HTMLInputElement>("callback_date").value;
+  const cb = date && [date, $<HTMLInputElement>("callback_time").value].filter(Boolean).join(" ");
   return [`${form.outcome} ${new Date().toTimeString().slice(0, 5)}`, who, cb && `call back ${cb}`, $<HTMLTextAreaElement>("note").value].filter(Boolean).join(" - ");
 }
 

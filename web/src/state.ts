@@ -1,4 +1,4 @@
-import type { CallForm, Config, LeadDetail, LeadRow, TabId } from "./types";
+import type { CallbackRow, CallForm, Config, LeadDetail, LeadRow, TabId, TraitCatalog } from "./types";
 
 // Shared UI state. Modules read and write fields on this one object.
 interface State {
@@ -10,6 +10,9 @@ interface State {
   form: CallForm;              // the call being logged
   tab: TabId;
   editingContact: number | null; // contact id being edited, or null when adding
+  callbacks: CallbackRow[];    // /api/callbacks
+  catalog: TraitCatalog;       // /api/traits
+  traitFilter: Map<string, "in" | "out">; // "person:Nice" -> must have / must not have
 }
 
 export const state: State = {
@@ -21,6 +24,9 @@ export const state: State = {
   form: { outcome: null, contact_id: null },
   tab: "new",
   editingContact: null,
+  callbacks: [],
+  catalog: { person: [], company: [] },
+  traitFilter: new Map(),
 };
 
 /** Config is loaded before anything renders, so the null case is a bug. */

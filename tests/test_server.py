@@ -76,6 +76,24 @@ class ServerTests(unittest.TestCase):
         names = [row["name"] for row in json.loads(self.get("/api/leads")[2])]
         self.assertEqual(names, ["Test Co"])
 
+    def post(self, path, body):
+        req = urllib.request.Request(self.base + path, method="POST", data=json.dumps(body).encode(),
+                                     headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req) as r:
+            return json.loads(r.read())
+
+    def test_trait_and_callback_routes(self):
+        lead = self.post("/api/leads", {"name": "Test Route Co", "brand": "JWL"})["id"]
+        tid = self.post("/api/traits", {"lead_id": lead, "name": "Ships overseas", "save": True})["id"]
+        self.assertIn("Ships overseas", json.loads(self.get("/api/traits")[2])["company"])
+        self.post(f"/api/traits/{tid}", {"note": "Mostly Europe"})
+        self.assertEqual(json.loads(self.get(f"/api/leads/{lead}")[2])["traits"][0]["note"], "Mostly Europe")
+        self.post(f"/api/traits/{tid}/delete", {})
+        self.assertNotIn("Ships overseas", json.loads(self.get("/api/traits")[2])["company"])
+        self.post("/api/activities", {"lead_id": lead, "outcome": "CALLBACK", "callback_date": "2026-11-24",
+                                      "expecting_call": True})
+        self.assertEqual([r["section"] for r in json.loads(self.get("/api/callbacks")[2])], ["expecting"])
+
 
 if __name__ == "__main__":
     unittest.main()
